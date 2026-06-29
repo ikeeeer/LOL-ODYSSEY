@@ -1,0 +1,128 @@
+﻿INFORME
+
+
+1. Objectiu del projecte
+Desenvolupar un videojoc web de tipus roguelike inspirat en l’univers de League of Legends, on el jugador construeix equips de campions i avança per diferents regions en una campanya progressiva. El focus principal és la presa de decisions estratègiques, la sinergia d’equip i la progressió entre runs.
+2. Premissa general
+El jugador controla un equip de campions que funcionen com unitats col·leccionables i jugables. Cada partida consisteix en una expedició per una regió de Runaterra dividida en diverses seccions. Cada secció conté nodes amb diferents tipus d’esdeveniments i culmina en un boss.
+Les regions introdueixen modificadors de joc que afecten la manera de construir i utilitzar l’equip.
+3. Estructura de la partida
+3.1 Campanya per regions
+El joc es divideix en una seqüència de regions:
+* Demacia
+* Noxus
+* Freljord
+* Piltover
+* Zaun
+* Ionia
+* Bilgewater
+* Shurima
+* Shadow Isles
+* Void
+Cada regió es divideix en aproximadament 5 seccions (actes). Cada secció finalitza amb un combat contra un boss.
+3.2 Flux general
+1. Inici de run amb 1 campió inicial aleatori
+2. Exploració de nodes dins d’una secció
+3. Reclutament i millora d’equip
+4. Combat contra boss de secció
+5. Progressió a la següent secció
+6. Boss final de regió
+7. Desbloqueig de nova regió
+4. Sistema de campions
+4.1 Reclutament
+Els campions s’obtenen durant la run mitjançant nodes de reclutament.
+* Es presenten 3 opcions de campions.
+* El jugador n’escull 1.
+* Pot aparèixer una opció “?” que representa un campió aleatori.
+La disponibilitat pot estar lleugerament influïda per la regió, però no restringida.
+4.2 Sistema de progressió
+Cada campió disposa de:
+* Nivell
+* Estadístiques base
+* Escalat per tipus (early / late game)
+El rendiment dels campions varia segons la fase de la partida:
+* Campions “early”: forts al principi, perden eficàcia amb el temps
+* Campions “late”: dèbils al principi, escalen fort en fases avançades
+Això obliga a construir equips equilibrats al llarg de la run.
+
+
+5. Sistema de combats i nodes
+5.1 Tipus de nodes
+* Duel (1v1): combats simples per recursos bàsics
+* Scrim (5v5): combats complexos contra equips estructurats (incloent equips inspirats en equips professionals històrics)
+* Reclutament: obtenció de campions
+* Botiga: compra d’objectes o recursos
+* Cofre: recompensa aleatòria
+* Esdeveniment (?): decisions amb risc/recompensa
+* Descans: curació o millores internes de l’equip
+
+
+5.2 Scrims
+Els scrims són combats contra equips complets.
+* Major dificultat
+* Major recompensa
+* Possibilitat d’enfrontar equips predefinits amb identitat pròpia
+6. Sistema de moneda
+Es proposa un sistema dual:
+* Or: utilitzat per objectes i millores temporals
+* Essència (o moneda principal): utilitzada per reclutar campions
+Aquest sistema separa economia de combat i col·lecció, evitant desequilibris.
+7. Sistema de regions
+7.1 Selecció de campions
+Els campions NO estan restringits per regió.
+* Qualsevol campió pot aparèixer en qualsevol regió
+* Hi ha una probabilitat lleugerament més alta de campions de la regió activa
+Això maximitza varietat i rejugabilitat.
+7.2 Identitat de regió (element clau)
+Cada regió aplica modificadors globals que afecten la partida:
+Exemples conceptuals:
+* Demacia: millores defensives i estabilitat
+* Noxus: recompenses per agressivitat
+* Freljord: combats més durs però millor loot
+* Piltover: més accés a botigues i rerolls
+* Bilgewater: esdeveniments d’atzar més freqüents
+Això garanteix que cada regió tingui un estil de joc diferenciat independentment dels campions utilitzats.
+
+
+
+
+
+
+8. Sistema de bosses
+8.1 Boss de secció
+Cada secció finalitza amb un boss.
+Característiques:
+* Representació d’un campió o entitat de la regió
+* Habilitats adaptades a la composició típica de la zona
+* Dificultat progressiva
+8.2 Boss final de regió
+Cada regió culmina amb un combat final més complex.
+Proposta:
+* Equip complet de 5 campions emblemàtics de la regió
+* Combats tipus “raid”
+* Alta dificultat i gran recompensa
+9. Disseny estratègic
+El sistema es basa en tres pilars:
+9.1 Sinergies d’equip
+* Bonus per combinacions de classes o regions
+* Estil similar a sistemes d’autobattlers
+9.2 Adaptació al context
+* Regions modifiquen les regles del joc
+* El jugador ha d’adaptar la composició constantment
+9.3 Decisió constant
+* Elecció de campions en nodes
+* Gestió de recursos
+* Risc vs recompensa en esdeveniments
+
+
+
+
+
+
+10. Conclusió de disseny
+El projecte proposa un roguelike de construcció d’equips basat en campions, amb progressió per regions i fort component estratègic. La clau del sistema és la combinació entre:
+* Variabilitat de campions
+* Identitat mecànica de cada regió
+* Sinergies i escalat de poder
+* Decisió contínua en nodes
+Aquest disseny prioritza rejugabilitat, diversitat de runs i profunditat estratègica sense limitar excessivament les opcions del jugador.

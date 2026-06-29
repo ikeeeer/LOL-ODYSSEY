@@ -1,0 +1,14 @@
+{
+  "name": "lolelike",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^14.18.0",
+    "typescript": "3.9.7"
+  }
+}
