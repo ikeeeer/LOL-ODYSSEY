@@ -10,6 +10,7 @@ export enum NodeType {
     Recruit,
     Heal,
     ChooseNewChamp,
+    Objects,
     Boss
 }
 
@@ -34,26 +35,58 @@ function getRandomChampions(pool: ChampionBase[], count: number): ChampionBase[]
     return shuffle(pool).slice(0, Math.min(count, pool.length));
 }
 
+function getRandomNonScrimNodeType(): NodeType {
+    const options = [
+        NodeType.Duel,
+        NodeType.Recruit,
+        NodeType.ChooseNewChamp,
+        NodeType.Objects
+    ];
+
+    return options[Math.floor(Math.random() * options.length)];
+}
+
+function getRandomNonHealNodeType(): NodeType {
+    const options = [
+        NodeType.Duel,
+        NodeType.Recruit,
+        NodeType.ChooseNewChamp,
+        NodeType.Objects
+    ];
+
+    return options[Math.floor(Math.random() * options.length)];
+}
+
 export function buildInitialMap(): MapGraph {
+    const healSlot = [11, 12, 13][Math.floor(Math.random() * 3)];
+    const lastThreeNodes = [11, 12, 13].map(nodeId => ({
+        id: nodeId,
+        type: nodeId === healSlot ? NodeType.Heal : getRandomNonHealNodeType(),
+        depth: nodeId === 11 ? 4 : nodeId === 12 ? 5 : 6,
+        next: nodeId === 11 ? [14, 15] : nodeId === 12 ? [14, 15] : [16]
+    }));
+
     const nodes: MapNode[] = [
         { id: 1, type: NodeType.Start, depth: 0, next: [2, 3, 4] },
-        { id: 2, type: NodeType.Duel, depth: 1, next: [5, 6] },
-        { id: 3, type: NodeType.ChooseNewChamp, depth: 1, next: [5, 6] },
-        { id: 4, type: NodeType.Duel, depth: 1, next: [5, 6] },
-        { id: 5, type: NodeType.Duel, depth: 2, next: [7, 8] },
-        { id: 6, type: NodeType.ChooseNewChamp, depth: 2, next: [7, 8] },
+        { id: 2, type: getRandomNonScrimNodeType(), depth: 1, next: [5, 6] },
+        { id: 3, type: getRandomNonScrimNodeType(), depth: 1, next: [5, 6] },
+        { id: 4, type: getRandomNonScrimNodeType(), depth: 1, next: [5, 6] },
+        { id: 5, type: getRandomNonScrimNodeType(), depth: 2, next: [7, 8] },
+        { id: 6, type: getRandomNonScrimNodeType(), depth: 2, next: [7, 8] },
         { id: 7, type: NodeType.Scrim, depth: 3, next: [9, 10] },
-        { id: 8, type: NodeType.Duel, depth: 3, next: [9, 10] },
-        { id: 9, type: NodeType.Heal, depth: 4, next: [11] },
-        { id: 10, type: NodeType.Recruit, depth: 4, next: [11] },
-        { id: 11, type: NodeType.Duel, depth: 5, next: [12] },
-        { id: 12, type: NodeType.Boss, depth: 6, next: [] }
+        { id: 8, type: getRandomNonScrimNodeType(), depth: 3, next: [9, 10] },
+        { id: 9, type: getRandomNonScrimNodeType(), depth: 4, next: [11, 12] },
+        { id: 10, type: getRandomNonScrimNodeType(), depth: 4, next: [11, 12] },
+        ...lastThreeNodes,
+        { id: 14, type: getRandomNonHealNodeType(), depth: 7, next: [16] },
+        { id: 15, type: getRandomNonHealNodeType(), depth: 7, next: [16] },
+        { id: 16, type: NodeType.Boss, depth: 8, next: [] }
     ];
 
     return {
         nodes,
         startNodeId: 1,
-        bossNodeId: 12
+        bossNodeId: 16
     };
 }
 

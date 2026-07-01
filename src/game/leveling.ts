@@ -25,6 +25,10 @@ function getGrowthMultiplier(currentLevel: number, growthCurve: GrowthCurve): nu
       // Siempre igual
       return 0.5;
 
+    case GrowthCurve.None:
+      // Sin crecimiento
+      return 0;
+
     default:
       return 0.5;
   }
@@ -42,28 +46,41 @@ export function levelUpChampion(champion: Champion): void {
   // Calcular incrementos según el tipo de crecimiento
   const hpIncrease = calculateStatIncrease(champion.maxHp, champion.hpGrowth, champion.level);
   const attackIncrease = calculateStatIncrease(champion.attack, champion.attackGrowth, champion.level);
-  const defenseIncrease = calculateStatIncrease(champion.defense, champion.defenseGrowth, champion.level);
+  const defenseIncrease = calculateStatIncrease(champion.armor, champion.defenseGrowth, champion.level);
   const speedIncrease = calculateStatIncrease(champion.speed, champion.speedGrowth, champion.level);
+  const apIncrease = calculateStatIncrease(champion.ap, champion.apGrowth, champion.level);
 
   // Aplicar incrementos
   champion.maxHp += hpIncrease;
+  // Si está vivo, aumentar currentHp. Si está muerto, no tocar currentHp para evitar ressuscitar
+  if (champion.currentHp > 0) {
+    champion.currentHp += hpIncrease;
+  }
   champion.attack += attackIncrease;
-  champion.defense += defenseIncrease;
+  champion.armor += defenseIncrease;
+  champion.magic_resist += defenseIncrease;  // defensGrowth augmenta tant armor com magic resist
   champion.speed += speedIncrease;
-
-  // Restaurar HP actual al máximo después de subir de nivel
-  champion.currentHp = champion.maxHp;
+  champion.ap += apIncrease;
 }
 
-export function levelUpTeam(team: Champion[]): void {
+export function levelUpTeam(team: Champion[], aliveAtStart?: Champion[]): void {
   team.forEach(champion => {
-    if (champion.currentHp > 0) {
-      levelUpChampion(champion);
+    // Si aliveAtStart está definido, solamente subir de nivel si el campeón estaba vivo al inicio y sigue vivo
+    if (aliveAtStart && !aliveAtStart.some(c => c.id === champion.id)) {
+      return; // No subir de nivel si no estaba vivo al inicio
     }
+    // De otro modo, subir de nivel (incluso si está muerto ahora, siempre que estuviera vivo al inicio)
+    levelUpChampion(champion);
   });
 }
 
-export function healTeam(team: Champion[], healPercent: number = 0.5): void {
+export function fullHealAndRevive(team: Champion[]): void {
+  team.forEach(champion => {
+    champion.currentHp = champion.maxHp;
+  });
+}
+
+export function healTeam(team: Champion[], healPercent: number = 0.05): void {
   team.forEach(champion => {
     if (champion.currentHp > 0) {
       const healAmount = Math.floor(champion.maxHp * healPercent);

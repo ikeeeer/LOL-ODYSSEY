@@ -1,4 +1,5 @@
 import type { Champion } from "./types";
+import type { InventoryItem } from "./types";
 import { Region } from "./types";
 import type { MapNode } from "./map";
 
@@ -10,6 +11,7 @@ export class Run {
   public essence: number;
   public round: number;
   public currentNode: MapNode | null;
+  public bag: InventoryItem[];
 
   constructor(playerTeam: Champion[], enemyTeam: Champion[], region: Region = Region.Demacia) {
     this.playerTeam = playerTeam;
@@ -19,6 +21,7 @@ export class Run {
     this.essence = 0;
     this.round = 1;
     this.currentNode = null;
+    this.bag = [];
   }
 
   setCurrentNode(node: MapNode): void {
@@ -31,6 +34,10 @@ export class Run {
 
   addChampionToEnemy(champion: Champion): void {
     this.enemyTeam.push(champion);
+  }
+
+  addItemToBag(item: InventoryItem): void {
+    this.bag.push(item);
   }
 
   advanceRound(): void {
