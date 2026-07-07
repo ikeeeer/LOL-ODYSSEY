@@ -3,6 +3,10 @@ import { simulateBattle } from "./game/battle";
 import { createChampionInstance, DEMACIA_CHAMPIONS } from "./game/champions";
 import {
   buildInitialMap,
+  buildSecondPhaseMap,
+  buildThirdPhaseMap,
+  buildFourthPhaseMap,
+  buildFifthPhaseMap,
   getNodeById,
   getBattleOpponents,
   getRecruitOptions,
@@ -10,14 +14,32 @@ import {
   NodeType,
   MapNode
 } from "./game/map";
+import { getBardNodeOptions, resolveBardOption, BardOption } from "./game/bard";
 import { Run } from "./game/run";
 import { Region, ChampionBase, Champion, DamageType } from "./game/types";
-import { levelUpTeam, healTeam, fullHealAndRevive } from "./game/leveling";
+import { fullHealAndRevive } from "./game/leveling";
 import { applyItemToChampion, canEquipItem, canStoreInBag, formatItemEffect, getObjectNodeOptions } from "./game/items";
+
+const ADMIN_MODE = true;
+const ADMIN_TEAM_NAMES = ["Galio", "Fiora", "Kayle", "Poppy", "Sona"];
 
 function getRandomChampionBase(region: Region = Region.Demacia) {
   const options = DEMACIA_CHAMPIONS.filter(champion => champion.region === region);
   return options[Math.floor(Math.random() * options.length)];
+}
+
+function getChampionBaseByName(name: string, region: Region = Region.Demacia): ChampionBase | undefined {
+  return DEMACIA_CHAMPIONS.find(champion => champion.region === region && champion.name === name);
+}
+
+function buildAdminTeam(region: Region = Region.Demacia): Champion[] {
+  return ADMIN_TEAM_NAMES
+    .map(name => getChampionBaseByName(name, region))
+    .filter((champion): champion is ChampionBase => champion !== undefined)
+    .map(champion => createChampionInstance({
+      ...champion,
+      level: 50
+    }));
 }
 
 const rl = readline.createInterface({
@@ -35,6 +57,10 @@ function printNodeOptions(nodes: MapNode[]): void {
   });
 }
 
+function getChampionPreview(champion: ChampionBase): Champion {
+  return createChampionInstance(champion);
+}
+
 async function chooseNode(nodes: MapNode[]): Promise<MapNode> {
   while (true) {
     printNodeOptions(nodes);
@@ -49,8 +75,9 @@ async function chooseNode(nodes: MapNode[]): Promise<MapNode> {
 
 function printChampionOptions(options: ChampionBase[]): void {
   options.forEach((champion, index) => {
+    const preview = getChampionPreview(champion);
     const damageTypeStr = champion.damageType === DamageType.Physical ? "Physical" : champion.damageType === DamageType.Magical ? "Magical" : "Mixed";
-    console.log(`${index + 1}. ${champion.name} (Lvl ${champion.level}) [${damageTypeStr}] - HP ${champion.maxHp}, ATK ${champion.attack}, AP ${champion.ap}, ARM ${champion.armor}, MR ${champion.magic_resist}, SPD ${champion.speed}`);
+    console.log(`${index + 1}. ${champion.name} (Lvl ${preview.level}) [${damageTypeStr}] - HP ${preview.maxHp}, ATK ${preview.attack}, AP ${preview.ap}, ARM ${preview.armor}, MR ${preview.magic_resist}, SPD ${preview.speed}`);
   });
 }
 
@@ -97,6 +124,48 @@ async function chooseChampion(options: ChampionBase[]): Promise<ChampionBase> {
   }
 }
 
+async function chooseRecruitChampion(options: ChampionBase[]): Promise<ChampionBase | null> {
+  while (true) {
+    printChampionOptions(options);
+    console.log("4. Skip / no reclutar ningú");
+
+    const answer = await ask("Tria un dels 3 champions disponibles o skip: ");
+    const choice = Number(answer.trim());
+
+    if (choice === 4) {
+      return null;
+    }
+
+    if (!Number.isNaN(choice) && choice >= 1 && choice <= options.length) {
+      return options[choice - 1];
+    }
+
+    if (answer.trim().toLowerCase() === "skip") {
+      return null;
+    }
+
+    console.log("Opció no vàlida. Torna-ho a intentar.");
+  }
+}
+
+function printBardOptions(options: BardOption[]): void {
+  options.forEach((option, index) => {
+    console.log(`${index + 1}. ${option.name}`);
+  });
+}
+
+async function chooseBardOption(options: BardOption[]): Promise<BardOption> {
+  while (true) {
+    printBardOptions(options);
+    const answer = await ask("Tria una de les 3 opcions de Bard: ");
+    const choice = Number(answer.trim());
+    if (!Number.isNaN(choice) && choice >= 1 && choice <= options.length) {
+      return options[choice - 1];
+    }
+    console.log("Opció no vàlida. Torna-ho a intentar.");
+  }
+}
+
 async function chooseItem(options: ReturnType<typeof getObjectNodeOptions>): Promise<(typeof options)[number]> {
   while (true) {
     printItemOptions(options);
@@ -126,6 +195,34 @@ async function chooseChampionForItem(team: Champion[], itemName: string): Promis
   }
 }
 
+async function chooseChampionToReplace(team: Champion[]): Promise<number> {
+  while (true) {
+    console.log("\nTens 5 campions. Quin vols substituir?");
+    team.forEach((champion, index) => {
+      console.log(`${index + 1}. ${champion.name} (HP ${champion.currentHp}/${champion.maxHp})`);
+    });
+
+    const answer = await ask("Campió a substituir: ");
+    const choice = Number(answer.trim());
+    if (!Number.isNaN(choice) && choice >= 1 && choice <= team.length) {
+      return choice - 1;
+    }
+    console.log("Opció no vàlida. Torna-ho a intentar.");
+  }
+}
+
+async function addChampionToTeam(team: Champion[], champion: Champion): Promise<void> {
+  if (team.length < 5) {
+    team.push(champion);
+    return;
+  }
+
+  const replaceIndex = await chooseChampionToReplace(team);
+  const removedChampion = team[replaceIndex];
+  team[replaceIndex] = champion;
+  console.log(`Has substituït ${removedChampion.name} per ${champion.name}.`);
+}
+
 async function chooseDamageTypeTarget(currentType: DamageType): Promise<DamageType> {
   const options: { label: string; value: DamageType }[] = [];
 
@@ -153,14 +250,21 @@ async function chooseDamageTypeTarget(currentType: DamageType): Promise<DamageTy
 }
 
 async function main(): Promise<void> {
-  const map = buildInitialMap();
+  let currentMap = buildInitialMap();
   const run = new Run([], [], Region.Demacia);
-  const startingChampion = createChampionInstance(getRandomChampionBase(run.region));
-  run.addChampionToPlayer(startingChampion);
 
-  console.log(`Starting champion: ${startingChampion.name}`);
+  if (ADMIN_MODE) {
+    const adminTeam = buildAdminTeam(run.region);
+    adminTeam.forEach(champion => run.addChampionToPlayer(champion));
+    console.log("ADMIN MODE activat: equip inicial al nivell 50.");
+    console.log(`Equip inicial: ${adminTeam.map(champion => `${champion.name} (Lvl ${champion.level})`).join(", ")}`);
+  } else {
+    const startingChampion = createChampionInstance(getRandomChampionBase(run.region));
+    run.addChampionToPlayer(startingChampion);
+    console.log(`Starting champion: ${startingChampion.name}`);
+  }
 
-  const startNode = getNodeById(map, map.startNodeId)!;
+  const startNode = getNodeById(currentMap, currentMap.startNodeId)!;
   run.setCurrentNode(startNode);
 
   while (run.currentNode) {
@@ -169,20 +273,46 @@ async function main(): Promise<void> {
 
     switch (node.type) {
       case NodeType.ChooseNewChamp: {
-        const options = getChooseNewChampOptions(node.depth, run.region);
+        const options = getChooseNewChampOptions(node.depth, run.region, currentMap.phase);
         console.log("Has arribat a un node de selecció de champion. Tria un dels 3:");
         const chosenBase = await chooseChampion(options);
         const chosenChampion = createChampionInstance(chosenBase);
-        run.addChampionToPlayer(chosenChampion);
+        await addChampionToTeam(run.playerTeam, chosenChampion);
         console.log(`Has triat: ${chosenChampion.name}`);
         break;
       }
+      case NodeType.Bard: {
+        const options = getBardNodeOptions();
+        console.log("Has arribat a un node de Bard. Tria una de les 3 opcions:");
+        const chosenOption = await chooseBardOption(options);
+        const selectedChampion = chosenOption.key === "pass-of-time"
+          ? await chooseChampionForItem(run.playerTeam, "The pass of time")
+          : undefined;
+        const resolution = await resolveBardOption(chosenOption, run, node.depth, selectedChampion);
+        console.log(resolution.message);
+
+        if (resolution.battle) {
+          await reorderTeam(run.playerTeam);
+          const result = simulateBattle(run.playerTeam, resolution.battle.opponents, resolution.battle.isDuel);
+          if (result !== "Team A wins") {
+            console.log("GAME OVER");
+            rl.close();
+            return;
+          }
+        }
+
+        break;
+      }
       case NodeType.Recruit: {
-        const options = getRecruitOptions(node.depth, run.region);
+        const options = getRecruitOptions(node.depth, run.region, currentMap.phase);
         console.log("Has arribat a un node de recruit. Tria un dels 3:");
-        const chosenBase = await chooseChampion(options);
+        const chosenBase = await chooseRecruitChampion(options);
+        if (!chosenBase) {
+          console.log("Has decidit no reclutar cap campió.");
+          break;
+        }
         const chosenChampion = createChampionInstance(chosenBase);
-        run.addChampionToPlayer(chosenChampion);
+        await addChampionToTeam(run.playerTeam, chosenChampion);
         console.log(`Has reclutat: ${chosenChampion.name}`);
         break;
       }
@@ -224,7 +354,7 @@ async function main(): Promise<void> {
       case NodeType.Duel:
       case NodeType.Scrim:
       case NodeType.Boss: {
-        const opponents = getBattleOpponents(node, run.region);
+        const opponents = getBattleOpponents(node, run.region, currentMap);
         if (opponents.length === 0) {
           console.log("No hi ha combat disponible en aquest node.");
           break;
@@ -236,6 +366,46 @@ async function main(): Promise<void> {
           console.log("GAME OVER");
           rl.close();
           return;
+        }
+
+        if (node.type === NodeType.Boss && currentMap.phase === 1) {
+          currentMap = buildSecondPhaseMap();
+          const phaseTwoStartNode = getNodeById(currentMap, currentMap.startNodeId)!;
+          fullHealAndRevive(run.playerTeam);
+          run.setCurrentNode(phaseTwoStartNode);
+          console.log("\n=== Fase 2 desbloquejada ===");
+          continue;
+        }
+
+        if (node.type === NodeType.Boss && currentMap.phase === 2) {
+          currentMap = buildThirdPhaseMap();
+          const phaseThreeStartNode = getNodeById(currentMap, currentMap.startNodeId)!;
+          fullHealAndRevive(run.playerTeam);
+          run.setCurrentNode(phaseThreeStartNode);
+          console.log("\n=== Fase 3 desbloquejada ===");
+          continue;
+        }
+
+        if (node.type === NodeType.Boss && currentMap.phase === 3) {
+          currentMap = buildFourthPhaseMap();
+          const phaseFourStartNode = getNodeById(currentMap, currentMap.startNodeId)!;
+          fullHealAndRevive(run.playerTeam);
+          run.setCurrentNode(phaseFourStartNode);
+          console.log("\n=== Fase 4 desbloquejada ===");
+          continue;
+        }
+
+        if (node.type === NodeType.Boss && currentMap.phase === 4) {
+          currentMap = buildFifthPhaseMap();
+          const phaseFiveStartNode = getNodeById(currentMap, currentMap.startNodeId)!;
+          fullHealAndRevive(run.playerTeam);
+          run.setCurrentNode(phaseFiveStartNode);
+          console.log("\n=== Fase final desbloquejada ===");
+          continue;
+        }
+
+        if (node.type === NodeType.Boss && currentMap.phase === 5) {
+          console.log("\n=== Fase final completada ===");
         }
         break;
       }
@@ -257,7 +427,7 @@ async function main(): Promise<void> {
       break;
     }
 
-    const nextNodes = node.next.map(nodeId => getNodeById(map, nodeId)!).filter(Boolean);
+    const nextNodes = node.next.map(nodeId => getNodeById(currentMap, nodeId)!).filter(Boolean);
     const chosenNode = await chooseNode(nextNodes);
     run.setCurrentNode(chosenNode);
   }

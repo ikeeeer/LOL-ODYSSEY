@@ -20,7 +20,7 @@ function getPassiveDescription(passive: ItemPassiveType): string {
     "Jarvan IV": "Cada segon atac aplica un drenatge de vida màxima.",
     "Lux": "Cada quart atac fa una explosió de dany extra.",
     "Vayne": "Cada tercer atac converteix el cop en dany directe basat en atac.",
-    "Quinn": "Cada segon atac redueix armor i MR de l'enemic.",
+    "Quinn": "Cada segon atac redueix un 5% l'armor i la MR de l'enemic.",
     "Locke": "Cada segon atac redueix la speed de l'enemic.",
     "Sylas": "Cada tercer atac roba AP temporal i el converteix en dany.",
     "Xin Zhao": "Cada quart atac fa un burst i cura el campió.",
@@ -106,6 +106,47 @@ function buildRandomPassiveItem(): InventoryItem {
   };
 }
 
+function createLegendaryItems(): InventoryItem[] {
+  return [
+    {
+      id: "infinity-edge",
+      name: "Infinity Edge",
+      description: "+20 atac.",
+      effect: { type: "stat", stat: "attack", amount: 20 }
+    },
+    {
+      id: "ludens-echo",
+      name: "Luden's Echo",
+      description: "+20 AP.",
+      effect: { type: "stat", stat: "ap", amount: 20 }
+    },
+    {
+      id: "warmogs-armor",
+      name: "Warmog's Armor",
+      description: "+15 health.",
+      effect: { type: "stat", stat: "maxHp", amount: 15 }
+    },
+    {
+      id: "sunfire-cape",
+      name: "Sunfire Cape",
+      description: "+15 armor.",
+      effect: { type: "stat", stat: "armor", amount: 15 }
+    },
+    {
+      id: "force-of-nature",
+      name: "Force of Nature",
+      description: "+15 armor.",
+      effect: { type: "stat", stat: "armor", amount: 15 }
+    },
+    {
+      id: "phantom-dancer",
+      name: "Phantom Dancer",
+      description: "+10% speed.",
+      effect: { type: "percentStat", stat: "speed", percent: 10 }
+    }
+  ];
+}
+
 function createBaseObjects(): InventoryItem[] {
   return [
   {
@@ -157,6 +198,15 @@ function createBaseObjects(): InventoryItem[] {
 
 export function getObjectNodeOptions(): InventoryItem[] {
   return shuffle(createBaseObjects()).slice(0, 3).map(item => ({ ...item }));
+}
+
+export function getRandomLegendaryItem(): InventoryItem {
+  return { ...randomPick(createLegendaryItems()) };
+}
+
+export function getRandomBasicItem(): InventoryItem {
+  const baseItems = createBaseObjects().filter(item => item.effect.type === "stat");
+  return { ...randomPick(baseItems) };
 }
 
 export function formatItemEffect(item: InventoryItem): string {

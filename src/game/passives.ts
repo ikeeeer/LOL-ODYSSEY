@@ -144,11 +144,20 @@ export function getEffectiveAttack(champion: Champion): number {
   let attack = champion.attack + (state.combatAttackBonus || 0);
 
   if (champion.name === "Kayle") {
-    if (champion.level >= 15) {
-      attack += 5;
-    }
-    if (champion.level >= 50) {
-      attack += 15;
+    if (champion.isBoss) {
+      if (champion.level >= 15) {
+        attack += 10;
+      }
+      if (champion.level >= 50) {
+        attack += 20;
+      }
+    } else {
+      if (champion.level >= 15) {
+        attack += 5;
+      }
+      if (champion.level >= 50) {
+        attack += 15;
+      }
     }
   }
 
@@ -158,8 +167,14 @@ export function getEffectiveAttack(champion: Champion): number {
 export function getEffectiveAp(champion: Champion): number {
   let ap = champion.ap;
 
-  if (champion.name === "Kayle" && champion.level >= 30) {
-    ap += 10;
+  if (champion.name === "Kayle") {
+    if (champion.isBoss) {
+      if (champion.level >= 30) {
+        ap += 15;
+      }
+    } else if (champion.level >= 30) {
+      ap += 10;
+    }
   }
 
   const state = getCombatState(champion);
@@ -206,6 +221,16 @@ export function applySonaBuff(team: Team, attacker: Champion): string[] {
     return [];
   }
 
+  if (attacker.isBoss) {
+    team.forEach(champion => {
+      const championState = getCombatState(champion);
+      const speedBonus = Math.max(1, Math.ceil(champion.speed * 0.1));
+      championState.combatSpeedBonus = (championState.combatSpeedBonus || 0) + speedBonus;
+    });
+
+    return ["  ✨ Sona boss accelera l'equip: +10% speed per a tothom aquest combat."];
+  }
+
   team.forEach(champion => {
     const championState = getCombatState(champion);
     championState.combatDamageBonus = (championState.combatDamageBonus || 0) + 0.05;
@@ -236,13 +261,13 @@ export function applyCombatPassives(attacker: Champion, defender: Champion, base
   }
 
   if (attackerPassiveSource === "Jarvan IV" && (attackerState.attackCounter || 0) % 2 === 0) {
-    const maxHpDrain = Math.floor(defender.maxHp * 0.05);
+    const maxHpDrain = Math.floor(defender.maxHp * (attacker.isBoss ? 0.1 : 0.05));
     damage += maxHpDrain;
     logMessages.push(`  🛡️ ${attacker.name} esquartera el rival i li lleva ${maxHpDrain} de vida màxima.`);
   }
 
   if (attackerPassiveSource === "Lux" && (attackerState.attackCounter || 0) % 4 === 0) {
-    const burst = Math.floor(defender.maxHp * 0.12);
+    const burst = Math.floor(defender.maxHp * (attacker.isBoss ? 0.2 : 0.12));
     damage += burst;
     logMessages.push(`  ✨ ${attacker.name} llança una explosió de llum: +${burst} de dany.`);
   }
@@ -253,8 +278,9 @@ export function applyCombatPassives(attacker: Champion, defender: Champion, base
   }
 
   if (attackerPassiveSource === "Quinn" && (attackerState.attackCounter || 0) % 2 === 0) {
-    const armorReduction = Math.floor(getEffectiveArmor(defender) * 0.05);
-    const mrReduction = Math.floor(getEffectiveMagicResist(defender) * 0.05);
+    const reductionPercent = attacker.isBoss ? 0.15 : 0.05;
+    const armorReduction = Math.max(1, Math.floor(getEffectiveArmor(defender) * reductionPercent));
+    const mrReduction = Math.max(1, Math.floor(getEffectiveMagicResist(defender) * reductionPercent));
     defenderState.combatArmorDebuff = (defenderState.combatArmorDebuff || 0) + armorReduction;
     defenderState.combatMagicResistDebuff = (defenderState.combatMagicResistDebuff || 0) + mrReduction;
     logMessages.push(`  🦅 ${attacker.name} desestabilitza el rival: -${armorReduction} armor i -${mrReduction} MR.`);
@@ -267,9 +293,11 @@ export function applyCombatPassives(attacker: Champion, defender: Champion, base
   }
 
   if (attackerPassiveSource === "Sylas" && (attackerState.attackCounter || 0) % 3 === 0) {
-    const stolenAp = Math.floor(defender.ap * 0.1);
+    const stolenApPercent = attacker.isBoss ? 0.15 : 0.1;
+    const damageConversionPercent = attacker.isBoss ? 0.75 : 0.5;
+    const stolenAp = Math.floor(defender.ap * stolenApPercent);
     attackerState.combatApBonus = (attackerState.combatApBonus || 0) + stolenAp;
-    damage += Math.max(1, Math.floor(stolenAp * 0.5));
+    damage += Math.max(1, Math.floor(stolenAp * damageConversionPercent));
     logMessages.push(`  🧠 ${attacker.name} roba ${stolenAp} AP temporal i converteix el poder en dany.`);
   }
 
@@ -297,32 +325,25 @@ export function applyCombatPassives(attacker: Champion, defender: Champion, base
     logMessages.push(`  🗡️ ${attacker.name} executa el rival sota el llindar de vida.`);
   }
 
-  if (attackerPassiveSource === "Sona") {
-    const state = getCombatState(attacker);
-    state.sonaCounter = (state.sonaCounter || 0) + 1;
-
-    if ((state.sonaCounter || 0) % 2 === 0) {
-      teamBuffFromSona(attacker, logMessages);
-    }
-  }
-
   if (defenderPassiveSource === "Galio" && attacker.damageType === DamageType.Magical) {
-    const reduced = Math.floor(baseDamage * 0.2);
+    const reducedPercent = defender.isBoss ? 0.4 : 0.2;
+    const reduced = Math.floor(baseDamage * reducedPercent);
     damage -= reduced;
     logMessages.push(`  🛡️ ${defender.name} absorbeix ${reduced} de dany màgic.`);
   }
 
   if (defenderPassiveSource === "Garen") {
-    const heal = Math.floor(defender.maxHp * 0.05);
+    const heal = Math.floor(defender.maxHp * (defender.isBoss ? 0.1 : 0.05));
     defender.currentHp = Math.min(defender.maxHp, defender.currentHp + heal);
     logMessages.push(`  🪖 ${defender.name} regenera ${heal} de vida després de rebre el cop.`);
   }
 
-  if (defenderPassiveSource === "Poppy") {
+  if (defender.isBoss && defenderPassiveSource === "Poppy") {
     defenderState.receivedAttackCounter = (defenderState.receivedAttackCounter || 0) + 1;
+
     if ((defenderState.receivedAttackCounter || 0) % 2 === 0) {
-      const armorBonus = Math.floor(defender.armor * 0.05);
-      const mrBonus = Math.floor(defender.magic_resist * 0.05);
+      const armorBonus = Math.max(1, Math.floor(defender.armor * 0.1));
+      const mrBonus = Math.max(1, Math.floor(defender.magic_resist * 0.1));
       defenderState.combatArmorBonus = (defenderState.combatArmorBonus || 0) + armorBonus;
       defenderState.combatMagicResistBonus = (defenderState.combatMagicResistBonus || 0) + mrBonus;
       logMessages.push(`  🛡️ ${defender.name} s'endureix: +${armorBonus} armor i +${mrBonus} MR.`);

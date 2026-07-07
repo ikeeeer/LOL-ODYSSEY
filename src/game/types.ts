@@ -96,6 +96,7 @@ export interface Champion extends ChampionBase {
     equippedItemId?: string;
     equippedItemName?: string;
     itemPassive?: ItemPassiveType;
+    isBoss?: boolean;
     attackCounter?: number;
     sonaCounter?: number;
     receivedAttackCounter?: number;

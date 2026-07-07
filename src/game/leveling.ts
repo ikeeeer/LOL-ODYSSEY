@@ -63,6 +63,27 @@ export function levelUpChampion(champion: Champion): void {
   champion.ap += apIncrease;
 }
 
+export function levelDownChampion(champion: Champion): void {
+  if (champion.level <= 1) {
+    return;
+  }
+
+  const hpDecrease = calculateStatIncrease(champion.maxHp, champion.hpGrowth, champion.level);
+  const attackDecrease = calculateStatIncrease(champion.attack, champion.attackGrowth, champion.level);
+  const defenseDecrease = calculateStatIncrease(champion.armor, champion.defenseGrowth, champion.level);
+  const speedDecrease = calculateStatIncrease(champion.speed, champion.speedGrowth, champion.level);
+  const apDecrease = calculateStatIncrease(champion.ap, champion.apGrowth, champion.level);
+
+  champion.level -= 1;
+  champion.maxHp = Math.max(1, champion.maxHp - hpDecrease);
+  champion.currentHp = Math.min(champion.currentHp, champion.maxHp);
+  champion.attack = Math.max(0, champion.attack - attackDecrease);
+  champion.armor = Math.max(0, champion.armor - defenseDecrease);
+  champion.magic_resist = Math.max(0, champion.magic_resist - defenseDecrease);
+  champion.speed = Math.max(1, champion.speed - speedDecrease);
+  champion.ap = Math.max(0, champion.ap - apDecrease);
+}
+
 export function levelUpTeam(team: Champion[], aliveAtStart?: Champion[]): void {
   team.forEach(champion => {
     // Si aliveAtStart está definido, solamente subir de nivel si el campeón estaba vivo al inicio y sigue vivo
