@@ -10,7 +10,6 @@ import {
   getNodeById,
   getBattleOpponents,
   getRecruitOptions,
-  getChooseNewChampOptions,
   NodeType,
   MapNode
 } from "./game/map";
@@ -272,15 +271,6 @@ async function main(): Promise<void> {
     console.log(`\nNode actual: [${node.id}] ${NodeType[node.type]}`);
 
     switch (node.type) {
-      case NodeType.ChooseNewChamp: {
-        const options = getChooseNewChampOptions(node.depth, run.region, currentMap.phase);
-        console.log("Has arribat a un node de selecció de champion. Tria un dels 3:");
-        const chosenBase = await chooseChampion(options);
-        const chosenChampion = createChampionInstance(chosenBase);
-        await addChampionToTeam(run.playerTeam, chosenChampion);
-        console.log(`Has triat: ${chosenChampion.name}`);
-        break;
-      }
       case NodeType.Bard: {
         const options = getBardNodeOptions();
         console.log("Has arribat a un node de Bard. Tria una de les 3 opcions:");
@@ -293,7 +283,7 @@ async function main(): Promise<void> {
 
         if (resolution.battle) {
           await reorderTeam(run.playerTeam);
-          const result = simulateBattle(run.playerTeam, resolution.battle.opponents, resolution.battle.isDuel);
+          const result = simulateBattle(run.playerTeam, resolution.battle.opponents);
           if (result !== "Team A wins") {
             console.log("GAME OVER");
             rl.close();
@@ -361,7 +351,7 @@ async function main(): Promise<void> {
         }
         console.log("\nRivals:", opponents.map(c => `${c.name} (Nivell ${c.level})`).join(", "));
         await reorderTeam(run.playerTeam);
-        const result = simulateBattle(run.playerTeam, opponents, node.type === NodeType.Duel);
+        const result = simulateBattle(run.playerTeam, opponents);
         if (result !== "Team A wins") {
           console.log("GAME OVER");
           rl.close();

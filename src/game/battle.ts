@@ -1,5 +1,4 @@
 import type { Champion, Team } from "./types";
-import { levelUpTeam } from "./leveling";
 import {
   applyCombatPassives,
   applyPostBattleBonuses,
@@ -25,90 +24,84 @@ function resolveAttack(attacker: Champion, defender: Champion, teamA: Team, team
   if (defender.currentHp > 0 && (defenderState.combatSupportHealPercent || 0) > 0) {
     const healAmount = Math.max(1, Math.floor(defender.maxHp * (defenderState.combatSupportHealPercent || 0)));
     defender.currentHp = Math.min(defender.maxHp, defender.currentHp + healAmount);
-    console.log(`  💚 ${defender.name} recupera ${healAmount} HP per sinergia de Support.`);
+    console.log(`  💚 ${defender.name} recovers ${healAmount} HP from Support synergy.`);
   }
 
   return passiveResult.damage;
 }
 
-export function simulateBattle(teamA: Team, teamB: Team, isDuel: boolean = false): string {
-  const aliveAtStart = teamA.filter(c => c.currentHp > 0);
-
+export function simulateBattle(teamA: Team, teamB: Team): string {
   resetCombatState(teamA);
   resetCombatState(teamB);
   applyTeamSynergies(teamA).forEach(message => console.log(message));
   applyTeamSynergies(teamB).forEach(message => console.log(message));
 
-  const aliveA = [...teamA];
-  const aliveB = [...teamB];
-  let turn = 1;
+  console.log("\n--- BATTLE STARTED ---\n");
 
-  console.log("\n--- BATALLA INICIADA ---\n");
+  // Índexs del primer campió viu de cada equip
+  let indexA = 0;
+  let indexB = 0;
 
-  while (aliveA.some(champion => champion.currentHp > 0) && aliveB.some(champion => champion.currentHp > 0)) {
-    const activeA = aliveA.find(c => c.currentHp > 0);
-    const activeB = aliveB.find(c => c.currentHp > 0);
+  let champA = teamA[indexA];
+  let champB = teamB[indexB];
 
-    if (!activeA || !activeB) break;
+  while (champA && champB) {
+    console.log(`${champA.name} (${champA.currentHp}/${champA.maxHp}) vs ${champB.name} (${champB.currentHp}/${champB.maxHp})`);
 
-    console.log(`Torn ${turn}: ${activeA.name} (${activeA.currentHp}/${activeA.maxHp}) vs ${activeB.name} (${activeB.currentHp}/${activeB.maxHp})`);
+    const aFirst = getEffectiveSpeed(champA) >= getEffectiveSpeed(champB);
 
-    if (getEffectiveSpeed(activeA) > getEffectiveSpeed(activeB)) {
-      const damageA = resolveAttack(activeA, activeB, teamA, teamB);
-      console.log(`  ➜ ${activeA.name} ataca ${activeB.name} per ${damageA} de dany.`);
-
-      if (activeB.currentHp <= 0) {
-        console.log(`    💀 ${activeB.name} HA MORT!\n`);
+    if (aFirst) {
+      const damageA = resolveAttack(champA, champB, teamA, teamB);
+      console.log(`  ➜ ${champA.name} attacks ${champB.name} for ${damageA} damage.`);
+      if (champB.currentHp <= 0) {
+        console.log(`    💀 ${champB.name} has died!\n`);
       } else {
-        const damageB = resolveAttack(activeB, activeA, teamA, teamB);
-        console.log(`  ➜ ${activeB.name} ataca ${activeA.name} per ${damageB} de dany.`);
-
-        if (activeA.currentHp <= 0) {
-          console.log(`    💀 ${activeA.name} HA MORT!\n`);
+        const damageB = resolveAttack(champB, champA, teamA, teamB);
+        console.log(`  ➜ ${champB.name} attacks ${champA.name} for ${damageB} damage.`);
+        if (champA.currentHp <= 0) {
+          console.log(`    💀 ${champA.name} has died!\n`);
         } else {
           console.log();
         }
       }
     } else {
-      const damageB = resolveAttack(activeB, activeA, teamA, teamB);
-      console.log(`  ➜ ${activeB.name} ataca ${activeA.name} per ${damageB} de dany.`);
-
-      if (activeA.currentHp <= 0) {
-        console.log(`    💀 ${activeA.name} HA MORT!\n`);
+      const damageB = resolveAttack(champB, champA, teamA, teamB);
+      console.log(`  ➜ ${champB.name} attacks ${champA.name} for ${damageB} damage.`);
+      if (champA.currentHp <= 0) {
+        console.log(`    💀 ${champA.name} has died!\n`);
       } else {
-        const damageA = resolveAttack(activeA, activeB, teamA, teamB);
-        console.log(`  ➜ ${activeA.name} ataca ${activeB.name} per ${damageA} de dany.`);
-
-        if (activeB.currentHp <= 0) {
-          console.log(`    💀 ${activeB.name} HA MORT!\n`);
+        const damageA = resolveAttack(champA, champB, teamA, teamB);
+        console.log(`  ➜ ${champA.name} attacks ${champB.name} for ${damageA} damage.`);
+        if (champB.currentHp <= 0) {
+          console.log(`    💀 ${champB.name} has died!\n`);
         } else {
           console.log();
         }
       }
     }
 
-    turn += 1;
+    // Avança al següent campió si ha mort
+    if (champA.currentHp <= 0) {
+      indexA++;
+      champA = teamA[indexA];
+    }
+    if (champB.currentHp <= 0) {
+      indexB++;
+      champB = teamB[indexB];
+    }
   }
 
-  const teamAWins = aliveA.some(champion => champion.currentHp > 0);
+  const teamAWins = teamA.some(champion => champion.currentHp > 0);
 
   if (teamAWins) {
-    if (isDuel) {
-      levelUpTeam(aliveA, aliveAtStart);
-    } else {
-      levelUpTeam(aliveA, aliveAtStart);
-      levelUpTeam(aliveA, aliveAtStart);
-      levelUpTeam(aliveA, aliveAtStart);
-    }
-
     const postBattleMessages = applyPostBattleBonuses(teamA);
     postBattleMessages.forEach(message => console.log(message));
-    console.log("\n✓ Team A GUANYA!");
+    console.log("\n✓ Team A WINS!");
     return "Team A wins";
   } else {
     const postBattleMessages = applyPostBattleBonuses(teamB);
     postBattleMessages.forEach(message => console.log(message));
-    console.log("\n✗ Team B GUANYA!");
+    console.log("\n✗ Team B WINS!");
     return "Team B wins";
   }
 }

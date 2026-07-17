@@ -1,4 +1,5 @@
-import { Champion, GrowthCurve } from "./types";
+import type { Champion } from "./types";
+import { GrowthCurve } from "./types";
 
 function getGrowthMultiplier(currentLevel: number, growthCurve: GrowthCurve): number {
   const level = currentLevel; // Nivel actual (1-50)
@@ -68,6 +69,7 @@ export function levelDownChampion(champion: Champion): void {
     return;
   }
 
+  // Calcular els increments del nivell actual (abans de baixar) perquè coincideixin amb levelUp
   const hpDecrease = calculateStatIncrease(champion.maxHp, champion.hpGrowth, champion.level);
   const attackDecrease = calculateStatIncrease(champion.attack, champion.attackGrowth, champion.level);
   const defenseDecrease = calculateStatIncrease(champion.armor, champion.defenseGrowth, champion.level);
@@ -76,6 +78,10 @@ export function levelDownChampion(champion: Champion): void {
 
   champion.level -= 1;
   champion.maxHp = Math.max(1, champion.maxHp - hpDecrease);
+  // Si estava viu, reduir currentHp proporcionalment
+  if (champion.currentHp > 0) {
+    champion.currentHp = Math.max(1, champion.currentHp - hpDecrease);
+  }
   champion.currentHp = Math.min(champion.currentHp, champion.maxHp);
   champion.attack = Math.max(0, champion.attack - attackDecrease);
   champion.armor = Math.max(0, champion.armor - defenseDecrease);

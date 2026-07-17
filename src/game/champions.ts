@@ -1,4 +1,4 @@
-import { Champion, ChampionBase, Region, Role, GrowthCurve, DamageType } from "./types";
+import { type Champion, type ChampionBase, Region, Role, GrowthCurve, DamageType } from "./types";
 import { levelUpChampion } from "./leveling";
 
 export const DEMACIA_CHAMPIONS: ChampionBase[] = [
@@ -310,10 +310,13 @@ export const DEMACIA_CHAMPIONS: ChampionBase[] = [
     }
 ];
 
+let nextInstanceId = 1000;
+
 export function createChampionInstance(champion: ChampionBase): Champion {
     const targetLevel = champion.level;
     const instance: Champion = {
         ...champion,
+        id: nextInstanceId++,
         level: 1,
         currentHp: champion.maxHp
     };

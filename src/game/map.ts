@@ -1,6 +1,7 @@
 
 
-import { Champion, ChampionBase, Region } from "./types";
+import type { Champion, ChampionBase } from "./types";
+import { Region } from "./types";
 import { DEMACIA_CHAMPIONS, createChampionInstance } from "./champions";
 
 export enum NodeType {
@@ -31,14 +32,19 @@ export interface MapGraph {
 }
 
 function shuffle<T>(items: T[]): T[] {
-    return [...items].sort(() => Math.random() - 0.5);
+    const result = [...items];
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
 }
 
 function getRandomChampions(pool: ChampionBase[], count: number): ChampionBase[] {
     return shuffle(pool).slice(0, Math.min(count, pool.length));
 }
 
-function getRandomNonScrimNodeType(): NodeType {
+function getRandomNonScrimNonBardNodeType(): NodeType {
     const options = [
         NodeType.Duel,
         NodeType.Recruit,
@@ -48,7 +54,7 @@ function getRandomNonScrimNodeType(): NodeType {
     return options[Math.floor(Math.random() * options.length)];
 }
 
-function getRandomNonHealNodeType(): NodeType {
+function getRandomNonHealNonBardNodeType(): NodeType {
     const options = [
         NodeType.Duel,
         NodeType.Recruit,
@@ -83,34 +89,67 @@ function getFirstThreeNodeTypes(): [NodeType, NodeType, NodeType] {
 }
 
 function buildPhaseMap(phase: number): MapGraph {
-    const healSlot = [11, 12, 13][Math.floor(Math.random() * 3)];
-    const bardPool = phase === 1
-        ? [8, 9, 10, 14, 15]
-        : [8, 9, 10, 11, 12, 13, 14, 15].filter(slot => slot !== healSlot);
-    const bardSlot = bardPool[Math.floor(Math.random() * bardPool.length)];
     const [firstNodeType, secondNodeType, thirdNodeType] = getFirstThreeNodeTypes();
-    const lastThreeNodes = [11, 12, 13].map(nodeId => ({
-        id: nodeId,
-        type: nodeId === healSlot ? NodeType.Heal : getRandomNonHealNodeType(),
-        depth: nodeId === 11 ? 4 : nodeId === 12 ? 5 : 6,
-        next: nodeId === 11 ? [14, 15] : nodeId === 12 ? [14, 15] : [16]
-    }));
+
+    // Estructura del mapa (17 nodes, 7 nivells de depth 0 a 6):
+    // Nivell 0: START (1)
+    // Nivell 1: A(2), B(3), C(4)
+    // Nivell 2: D(5), E(6), F(7)
+    // Nivell 3: G(8), H(9), I(10), J(11)
+    // Nivell 4: K(12), L(13), M(14)
+    // Nivell 5: N(15), O(16)
+    // Nivell 6: BOSS(17)
+    //
+    // Restriccions:
+    // - Només 1 node de Scrim (al nivell 3)
+    // - Només 1 node de Bard (en qualsevol node no-Start, no-Boss, no-Scrim)
+    // - Un dels 2 últims nodes (15 o 16) ha de ser de curació (Heal)
+
+    // Triar la posició de l'únic Scrim (nivell 3: nodes 8-11)
+    const scrimNodeId = [8, 9, 10, 11][Math.floor(Math.random() * 4)];
+
+    // Triar la posició del Bard a partir del nivell 3 (nodes 8-16, excloent Scrim)
+    const bardCandidateIds = [8, 9, 10, 11, 12, 13, 14, 15, 16].filter(
+        id => id !== scrimNodeId
+    );
+    const bardNodeId = bardCandidateIds[Math.floor(Math.random() * bardCandidateIds.length)];
+
+    // Triar quin dels 2 últims nodes (15 o 16) serà de curació
+    const healNodeId = Math.random() < 0.5 ? 15 : 16;
+
+    // Construeix els tipus de node
+    function getNodeType(nodeId: number, depth: number): NodeType {
+        if (nodeId === scrimNodeId) return NodeType.Scrim;
+        if (nodeId === bardNodeId) return NodeType.Bard;
+        if (nodeId === healNodeId) return NodeType.Heal;
+        // Nodes del nivell 1 usen firstNodeType etc.
+        if (nodeId === 2) return firstNodeType;
+        if (nodeId === 3) return secondNodeType;
+        if (nodeId === 4) return thirdNodeType;
+        // Nodes del nivell 2-4: no Scrim, no Bard
+        if (depth <= 4) return getRandomNonScrimNonBardNodeType();
+        // Nodes del nivell 5 (no el de curació): no Heal, no Bard
+        return getRandomNonHealNonBardNodeType();
+    }
 
     const nodes: MapNode[] = [
         { id: 1, type: NodeType.Start, depth: 0, next: [2, 3, 4] },
-        { id: 2, type: firstNodeType, depth: 1, next: [5, 6] },
-        { id: 3, type: secondNodeType, depth: 1, next: [5, 6] },
-        { id: 4, type: thirdNodeType, depth: 1, next: [5, 6] },
-        { id: 5, type: getRandomNonScrimNodeType(), depth: 2, next: [7, 8] },
-        { id: 6, type: getRandomNonScrimNodeType(), depth: 2, next: [7, 8] },
-        { id: 7, type: NodeType.Scrim, depth: 3, next: [9, 10] },
-        { id: 8, type: bardSlot === 8 ? NodeType.Bard : getRandomNonScrimNodeType(), depth: 3, next: [9, 10] },
-        { id: 9, type: bardSlot === 9 ? NodeType.Bard : getRandomNonScrimNodeType(), depth: 4, next: [11, 12] },
-        { id: 10, type: bardSlot === 10 ? NodeType.Bard : getRandomNonScrimNodeType(), depth: 4, next: [11, 12] },
-        ...lastThreeNodes,
-        { id: 14, type: bardSlot === 14 ? NodeType.Bard : getRandomNonHealNodeType(), depth: 7, next: [16] },
-        { id: 15, type: bardSlot === 15 ? NodeType.Bard : getRandomNonHealNodeType(), depth: 7, next: [16] },
-        { id: 16, type: NodeType.Boss, depth: 8, next: [] }
+        { id: 2, type: getNodeType(2, 1), depth: 1, next: [5] },
+        { id: 3, type: getNodeType(3, 1), depth: 1, next: [6] },
+        { id: 4, type: getNodeType(4, 1), depth: 1, next: [7] },
+        { id: 5, type: getNodeType(5, 2), depth: 2, next: [8, 9] },
+        { id: 6, type: getNodeType(6, 2), depth: 2, next: [9, 10] },
+        { id: 7, type: getNodeType(7, 2), depth: 2, next: [10, 11] },
+        { id: 8, type: getNodeType(8, 3), depth: 3, next: [12] },
+        { id: 9, type: getNodeType(9, 3), depth: 3, next: [12, 13] },
+        { id: 10, type: getNodeType(10, 3), depth: 3, next: [13, 14] },
+        { id: 11, type: getNodeType(11, 3), depth: 3, next: [14] },
+        { id: 12, type: getNodeType(12, 4), depth: 4, next: [15] },
+        { id: 13, type: getNodeType(13, 4), depth: 4, next: [15, 16] },
+        { id: 14, type: getNodeType(14, 4), depth: 4, next: [16] },
+        { id: 15, type: getNodeType(15, 5), depth: 5, next: [17] },
+        { id: 16, type: getNodeType(16, 5), depth: 5, next: [17] },
+        { id: 17, type: NodeType.Boss, depth: 6, next: [] }
     ];
 
     const bossChampionName = phase === 5 ? "Demacia Protectors" : phase === 4 ? "Galio" : phase === 3 ? "Sylas" : phase === 2 ? "Poppy" : "Quinn";
@@ -118,7 +157,7 @@ function buildPhaseMap(phase: number): MapGraph {
     return {
         nodes,
         startNodeId: 1,
-        bossNodeId: 16,
+        bossNodeId: 17,
         phase,
         bossChampionName
     };
@@ -152,18 +191,6 @@ export function getRecruitOptions(depth: number, region: Region = Region.Demacia
     const pool = region === Region.Demacia ? DEMACIA_CHAMPIONS : DEMACIA_CHAMPIONS;
     const options = getRandomChampions(pool, 3);
     const targetLevel = phase === 5 ? Math.max(47, depth) : phase === 4 ? Math.max(35, depth) : phase === 3 ? Math.max(21, depth) : phase === 2 ? Math.max(10, depth) : depth;
-
-    return options.map(champion => ({
-        ...champion,
-        level: targetLevel
-    }));
-}
-
-export function getChooseNewChampOptions(depth: number, region: Region = Region.Demacia, phase: number = 1): ChampionBase[] {
-    const pool = region === Region.Demacia ? DEMACIA_CHAMPIONS : DEMACIA_CHAMPIONS;
-    const options = getRandomChampions(pool, 3);
-    const minimumLevel = phase === 5 ? 47 : phase === 4 ? 35 : phase === 3 ? 21 : phase === 2 ? 10 : 1;
-    const targetLevel = Math.max(minimumLevel, depth - 2);
 
     return options.map(champion => ({
         ...champion,

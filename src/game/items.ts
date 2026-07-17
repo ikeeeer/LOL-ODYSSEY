@@ -1,9 +1,15 @@
 import { levelUpChampion } from "./leveling";
 import type { Champion, InventoryItem } from "./types";
-import { DamageType, ItemPassiveType } from "./types";
+import { DamageType } from "./types";
+import type { ItemPassiveType } from "./types";
 
 function shuffle<T>(items: T[]): T[] {
-  return [...items].sort(() => Math.random() - 0.5);
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }
 
 function randomPick<T>(items: T[]): T {
@@ -14,22 +20,22 @@ function getPassiveName(passive: ItemPassiveType): string {
   return passive;
 }
 
-function getPassiveDescription(passive: ItemPassiveType): string {
+export function getPassiveDescription(passive: ItemPassiveType): string {
   const descriptions: Record<ItemPassiveType, string> = {
-    "Fiora": "Cada tercer atac suma dany extra.",
-    "Jarvan IV": "Cada segon atac aplica un drenatge de vida màxima.",
-    "Lux": "Cada quart atac fa una explosió de dany extra.",
-    "Vayne": "Cada tercer atac converteix el cop en dany directe basat en atac.",
-    "Quinn": "Cada segon atac redueix un 5% l'armor i la MR de l'enemic.",
-    "Locke": "Cada segon atac redueix la speed de l'enemic.",
-    "Sylas": "Cada tercer atac roba AP temporal i el converteix en dany.",
-    "Xin Zhao": "Cada quart atac fa un burst i cura el campió.",
-    "Lucian": "Cada tercer atac dispara un segon tret.",
-    "Morgana": "El campió es cura una part del dany que fa.",
-    "Galio": "Redueix el dany màgic rebut.",
-    "Garen": "Regenera vida després de rebre el cop.",
-    "Poppy": "S'endureix progressivament quan rep atacs.",
-    "Shyvana": "Després del combat guanya armadura i MR permanents."
+    "Fiora": "Every third attack deals bonus damage.",
+    "Jarvan IV": "Every second attack applies max HP drain.",
+    "Lux": "Every fourth attack causes a burst of extra damage.",
+    "Vayne": "Every third attack converts the hit to direct damage based on attack.",
+    "Quinn": "Every second attack reduces enemy armor and MR by 5%.",
+    "Locke": "Every second attack reduces enemy speed.",
+    "Sylas": "Every third attack steals temporary AP and converts it to damage.",
+    "Xin Zhao": "Every fourth attack bursts and heals the champion.",
+    "Lucian": "Every third attack fires a second shot.",
+    "Morgana": "The champion heals a portion of damage dealt.",
+    "Galio": "Reduces magic damage taken.",
+    "Garen": "Regenerates health after being hit.",
+    "Poppy": "Progressively hardens when taking attacks.",
+    "Shyvana": "After combat gains permanent armor and MR."
   };
 
   return descriptions[passive];
@@ -90,7 +96,7 @@ function buildDamageTypeItem(): InventoryItem {
   return {
     id: "damage-type-shifter",
     name: "Damage Shifter",
-    description: "Canvia el tipus de dany del campió que l'equipa.",
+    description: "Changes the damage type of the champion who equips it.",
     effect: { type: "damageTypeChoice" }
   };
 }
@@ -188,7 +194,7 @@ function createBaseObjects(): InventoryItem[] {
   {
     id: "level-core",
     name: "+1 level",
-    description: "Consumible: puja un nivell al campió triat.",
+    description: "Consumable: levels up the chosen champion.",
     effect: { type: "level", amount: 1 }
   },
   buildDamageTypeItem(),
@@ -216,15 +222,15 @@ export function formatItemEffect(item: InventoryItem): string {
     case "percentStat":
       return `+${item.effect.percent}% ${getStatLabel(item.effect.stat)}`;
     case "level":
-      return `Consumible: +${item.effect.amount} nivell`;
+      return `Consumable: +${item.effect.amount} level`;
     case "damageTypeChoice":
-      return "Canvia el tipus de dany";
+      return "Changes damage type";
     case "passive":
       return `Passiva: ${item.effect.passive}`;
   }
 }
 
-export function canStoreInBag(item: InventoryItem): boolean {
+export function canStoreInBag(_item: InventoryItem): boolean {
   return true;
 }
 
@@ -238,7 +244,7 @@ export function canEquipItem(champion: Champion, item: InventoryItem): boolean {
 
 export function applyItemToChampion(champion: Champion, item: InventoryItem, damageTypeTarget?: DamageType): string {
   if (item.effect.type !== "level" && champion.equippedItemId) {
-    return `${champion.name} ja té un objecte equipat.`;
+    return `${champion.name} already has an item equipped.`;
   }
 
   switch (item.effect.type) {
@@ -267,21 +273,25 @@ export function applyItemToChampion(champion: Champion, item: InventoryItem, dam
 
       champion.equippedItemId = item.id;
       champion.equippedItemName = item.name;
-      return `${champion.name} equipa ${item.name}.`;
+      champion.equippedItemEffect = item.effect;
+      return `${champion.name} equips ${item.name}.`;
     case "percentStat":
       if (item.effect.stat === "speed") {
         const bonus = Math.max(1, Math.floor(champion.speed * (item.effect.percent / 100)));
         champion.speed += bonus;
+        // Guarda el bonus per poder revertir-lo correctament a unequipItem
+        (champion as Champion & { speedBonusApplied?: number }).speedBonusApplied = bonus;
       }
 
       champion.equippedItemId = item.id;
       champion.equippedItemName = item.name;
-      return `${champion.name} equipa ${item.name}.`;
+      champion.equippedItemEffect = item.effect;
+      return `${champion.name} equips ${item.name}.`;
     case "level":
       for (let index = 0; index < item.effect.amount; index += 1) {
         levelUpChampion(champion);
       }
-      return `${champion.name} puja ${item.effect.amount} nivell.`;
+      return `${champion.name} gains ${item.effect.amount} level.`;
     case "damageTypeChoice":
       if (damageTypeTarget === undefined) {
         return "Falta el tipus de dany de destí.";
@@ -290,12 +300,82 @@ export function applyItemToChampion(champion: Champion, item: InventoryItem, dam
       champion.damageType = damageTypeTarget;
       champion.equippedItemId = item.id;
       champion.equippedItemName = item.name;
-      return `${champion.name} canvia el tipus de dany.`;
+      champion.equippedItemEffect = item.effect;
+      return `${champion.name} changes damage type.`;
     case "passive":
       champion.itemPassive = item.effect.passive;
       resetCopiedPassiveState(champion);
       champion.equippedItemId = item.id;
       champion.equippedItemName = item.name;
-      return `${champion.name} obté la passiva ${getPassiveName(item.effect.passive)}.`;
+      champion.equippedItemEffect = item.effect;
+      return `${champion.name} gains the passive ${getPassiveName(item.effect.passive)}.`;
   }
+}
+
+export function unequipItem(champion: Champion): InventoryItem | null {
+  if (!champion.equippedItemId || !champion.equippedItemName) return null;
+
+  // Reconstrueix l'item amb l'efecte original guardat
+  const itemName = champion.equippedItemName;
+  const item: InventoryItem = {
+    id: champion.equippedItemId,
+    name: itemName,
+    description: "",
+    effect: champion.equippedItemEffect ?? { type: "stat", stat: "attack", amount: 0 }
+  };
+
+  // Desfà els efectes segons el nom de l'item
+  // Com que no tenim l'efecte original guardat, fem el següent:
+  // Els items de stat es poden identificar pel nom i revertir
+  const statItems: Record<string, { stat: "attack" | "ap" | "maxHp" | "armor" | "magic_resist" | "speed"; amount: number }> = {
+    "Long Sword": { stat: "attack", amount: 10 },
+    "Magic Tome": { stat: "ap", amount: 10 },
+    "Ruby Crystal": { stat: "maxHp", amount: 5 },
+    "Cloth Armor": { stat: "armor", amount: 5 },
+    "Null Magic Mantle": { stat: "magic_resist", amount: 5 },
+    "Infinity Edge": { stat: "attack", amount: 20 },
+    "Luden's Echo": { stat: "ap", amount: 20 },
+    "Warmog's Armor": { stat: "maxHp", amount: 15 },
+    "Sunfire Cape": { stat: "armor", amount: 15 },
+    "Force of Nature": { stat: "armor", amount: 15 },
+  };
+
+  const statInfo = statItems[itemName];
+  if (statInfo) {
+    switch (statInfo.stat) {
+      case "attack": champion.attack -= statInfo.amount; break;
+      case "ap": champion.ap -= statInfo.amount; break;
+      case "maxHp":
+        champion.maxHp -= statInfo.amount;
+        champion.currentHp = Math.min(champion.currentHp, champion.maxHp);
+        break;
+      case "armor": champion.armor -= statInfo.amount; break;
+      case "magic_resist": champion.magic_resist -= statInfo.amount; break;
+      case "speed": champion.speed -= statInfo.amount; break;
+    }
+  } else if (itemName === "Dagger" || itemName === "Phantom Dancer") {
+    // +5% / +10% speed — revertir usant el bonus guardat
+    const championExt = champion as Champion & { speedBonusApplied?: number };
+    const bonus = championExt.speedBonusApplied ?? Math.max(1, Math.floor(champion.speed * 0.05));
+    champion.speed = Math.max(1, champion.speed - bonus);
+    delete championExt.speedBonusApplied;
+  } else if (itemName === "Damage Shifter") {
+    // Revertir el tipus de dany
+    const current = champion.damageType;
+    champion.damageType =
+      current === DamageType.Physical ? DamageType.Magical
+      : current === DamageType.Magical ? DamageType.Mixed
+      : DamageType.Physical;
+  } else if (champion.itemPassive) {
+    // Era una passiva — treu-la
+    delete champion.itemPassive;
+    resetCopiedPassiveState(champion);
+  }
+
+  // Neteja l'equipament
+  delete champion.equippedItemId;
+  delete champion.equippedItemName;
+  delete champion.equippedItemEffect;
+
+  return item;
 }

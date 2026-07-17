@@ -34,7 +34,12 @@ interface BardRunContext {
 }
 
 function shuffle<T>(items: T[]): T[] {
-  return [...items].sort(() => Math.random() - 0.5);
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }
 
 function randomPick<T>(items: readonly T[]): T {
@@ -114,11 +119,11 @@ export async function resolveBardOption(
       if (Math.random() < 0.7) {
         const reward = getRandomBasicItem();
         run.addItemToBag(reward);
-        return { message: `Has salvat el meep i has guanyat ${reward.name}.` };
+        return { message: `You saved the meep and gained ${reward.name}.` };
       }
 
       return {
-        message: "El meep s'ha defensat i t'espera un duel.",
+        message: "The meep fought back and a duel awaits you.",
         battle: {
           opponents: [getRandomChampionInstance(run.region, opponentLevel)],
           isDuel: true
@@ -128,11 +133,11 @@ export async function resolveBardOption(
     case "misterious-portal": {
       if (Math.random() < 0.5) {
         healTeam(run.playerTeam, 0.5);
-        return { message: "El portal t'ha curat una part important de l'equip." };
+        return { message: "The portal healed a significant portion of your team." };
       }
 
       return {
-        message: "El portal t'ha portat a un combat especial.",
+        message: "The portal brought you to a special combat.",
         battle: {
           opponents: [getRandomChampionInstance(run.region, opponentLevel + 2)],
           isDuel: false
@@ -148,7 +153,7 @@ export async function resolveBardOption(
       const reward = getRandomLegendaryItem();
       run.addItemToBag(reward);
       return {
-        message: `Bard sacrifica ${strongestChampion.name} i t'atorga ${reward.name}.`
+        message: `Bard sacrifices ${strongestChampion.name} and grants you ${reward.name}.`
       };
     }
     case "bards-melody": {
@@ -160,25 +165,25 @@ export async function resolveBardOption(
 
       if (melody === "harmonia") {
         applyTeamPermanentStats(run.playerTeam, 10, 0, 0, 0, 0);
-        return { message: "Bard toca Harmonia: tot l'equip guanya +10 HP permanent." };
+        return { message: "Bard plays Harmony: the whole team gains +10 HP permanently." };
       }
 
       if (melody === "valor") {
         applyTeamPermanentStats(run.playerTeam, 0, 5, 5, 0, 0);
-        return { message: "Bard toca Valor: tot l'equip guanya +5 armor i +5 magic resist permanent." };
+        return { message: "Bard plays Valor: the whole team gains +5 armor and +5 magic resist permanently." };
       }
 
       applyTeamPermanentStats(run.playerTeam, 0, 0, 0, 5, 5);
-      return { message: "Bard toca Ambició: tot l'equip guanya +5 AP i +5 atac permanent." };
+      return { message: "Bard plays Ambition: the whole team gains +5 AP and +5 attack permanently." };
     }
     case "pass-of-time": {
       if (!selectedChampion) {
-        return { message: "Has de triar un campió del teu equip per al pas del temps." };
+        return { message: "You must choose a champion from your team for the pass of time." };
       }
 
       const targetIndex = run.playerTeam.findIndex(champion => champion.id === selectedChampion.id);
       if (targetIndex === -1) {
-        return { message: "No s'ha pogut trobar el campió seleccionat." };
+        return { message: "Could not find the selected champion." };
       }
 
       const replacement = getRandomChampionBase(run.region);
@@ -186,7 +191,7 @@ export async function resolveBardOption(
       const newChampion = createChampionInstance(replacement);
       run.playerTeam[targetIndex] = newChampion;
 
-      return { message: `${selectedChampion.name} ha estat reemplaçat per ${newChampion.name} amb +3 nivells.` };
+      return { message: `${selectedChampion.name} has been replaced by ${newChampion.name} with +3 levels.` };
     }
     case "old-age": {
       levelUpTeam(run.playerTeam);
@@ -194,7 +199,7 @@ export async function resolveBardOption(
       levelUpTeam(run.playerTeam);
       levelUpTeam(run.playerTeam);
       applyMaxHpReduction(run.playerTeam, 0.2);
-      return { message: "L'edat avança: tot l'equip puja 4 nivells però perd un 20% del HP màxim." };
+      return { message: "Time passes: the whole team gains 4 levels but loses 20% max HP." };
     }
   }
 }

@@ -1,128 +1,369 @@
-﻿INFORME
+﻿================================================================================
+                         LOLELIKE — INFORME DEL JOC
+================================================================================
+
+ÍNDEX
+--------------------------------------------------------------------------------
+1.  Introducció
+2.  Premissa general
+3.  Estructura de la partida
+    3.1  Fases (campanya de Demacia)
+    3.2  Flux general
+    3.3  Mapa de nodes
+4.  Sistema de campions
+    4.1  Llista de campions
+    4.2  Estadístiques
+    4.3  Sistema de progressió (creixement)
+    4.4  Reclutament i substitució
+5.  Sistema de combats
+    5.1  Tipus de combat
+    5.2  Fórmula de dany
+    5.3  Visualització del combat
+6.  Passives dels campions
+7.  Sinergies d'equip
+8.  Sistema d'objectes
+    8.1  Objectes bàsics
+    8.2  Objectes llegendaris
+    8.3  Passives d'objectes
+    8.4  Bossa i equipació
+9.  Nodes del mapa
+    9.1  Tipus de nodes
+    9.2  Restriccions per fase
+10. Sistema del Bard
+11. Sistema de bosses
+12. Disseny d'interfície
+13. Conclusió
 
 
-1. Objectiu del projecte
-Desenvolupar un videojoc web de tipus roguelike inspirat en l’univers de League of Legends, on el jugador construeix equips de campions i avança per diferents regions en una campanya progressiva. El focus principal és la presa de decisions estratègiques, la sinergia d’equip i la progressió entre runs.
-2. Premissa general
-El jugador controla un equip de campions que funcionen com unitats col·leccionables i jugables. Cada partida consisteix en una expedició per una regió de Runaterra dividida en diverses seccions. Cada secció conté nodes amb diferents tipus d’esdeveniments i culmina en un boss.
-Les regions introdueixen modificadors de joc que afecten la manera de construir i utilitzar l’equip.
-3. Estructura de la partida
-3.1 Campanya per regions
-El joc es divideix en una seqüència de regions:
-* Demacia
-* Noxus
-* Freljord
-* Piltover
-* Zaun
-* Ionia
-* Bilgewater
-* Shurima
-* Shadow Isles
-* Void
-Cada regió es divideix en aproximadament 5 seccions (actes). Cada secció finalitza amb un combat contra un boss.
-3.2 Flux general
-1. Inici de run amb 1 campió inicial aleatori
-2. Exploració de nodes dins d’una secció
-3. Reclutament i millora d’equip
-4. Combat contra boss de secció
-5. Progressió a la següent secció
-6. Boss final de regió
-7. Desbloqueig de nova regió
-4. Sistema de campions
-4.1 Reclutament
-Els campions s’obtenen durant la run mitjançant nodes de reclutament.
-* Es presenten 3 opcions de campions.
-* El jugador n’escull 1.
-* Pot aparèixer una opció “?” que representa un campió aleatori.
-La disponibilitat pot estar lleugerament influïda per la regió, però no restringida.
-4.2 Sistema de progressió
-Cada campió disposa de:
-* Nivell
-* Estadístiques base
-* Escalat per tipus (early / late game)
-El rendiment dels campions varia segons la fase de la partida:
-* Campions “early”: forts al principi, perden eficàcia amb el temps
-* Campions “late”: dèbils al principi, escalen fort en fases avançades
-Això obliga a construir equips equilibrats al llarg de la run.
+================================================================================
+1. INTRODUCCIÓ
+================================================================================
+LoLELIKE és un roguelike d'estratègia on construeixes un equip de campions de
+League of Legends i avances per un mapa de nodes superant combats, reclutant
+campions i gestionant objectes. Cada partida ofereix decisions diferents i
+rejugabilitat alta.
 
 
-5. Sistema de combats i nodes
-5.1 Tipus de nodes
-* Duel (1v1): combats simples per recursos bàsics
-* Scrim (5v5): combats complexos contra equips estructurats (incloent equips inspirats en equips professionals històrics)
-* Reclutament: obtenció de campions
-* Botiga: compra d’objectes o recursos
-* Cofre: recompensa aleatòria
-* Esdeveniment (?): decisions amb risc/recompensa
-* Descans: curació o millores internes de l’equip
+================================================================================
+2. PREMISSA GENERAL
+================================================================================
+El jugador controla un equip de fins a 5 campions. Cada partida és una
+expedició dividida en 5 fases. Cada fase conté un mapa de nodes amb
+esdeveniments diversos i culmina en un combat contra un boss. En superar el
+boss de la fase final, es guanya la partida.
 
 
-5.2 Scrims
-Els scrims són combats contra equips complets.
-* Major dificultat
-* Major recompensa
-* Possibilitat d’enfrontar equips predefinits amb identitat pròpia
-6. Sistema de moneda
-Es proposa un sistema dual:
-* Or: utilitzat per objectes i millores temporals
-* Essència (o moneda principal): utilitzada per reclutar campions
-Aquest sistema separa economia de combat i col·lecció, evitant desequilibris.
-7. Sistema de regions
-7.1 Selecció de campions
-Els campions NO estan restringits per regió.
-* Qualsevol campió pot aparèixer en qualsevol regió
-* Hi ha una probabilitat lleugerament més alta de campions de la regió activa
-Això maximitza varietat i rejugabilitat.
-7.2 Identitat de regió (element clau)
-Cada regió aplica modificadors globals que afecten la partida:
-Exemples conceptuals:
-* Demacia: millores defensives i estabilitat
-* Noxus: recompenses per agressivitat
-* Freljord: combats més durs però millor loot
-* Piltover: més accés a botigues i rerolls
-* Bilgewater: esdeveniments d’atzar més freqüents
-Això garanteix que cada regió tingui un estil de joc diferenciat independentment dels campions utilitzats.
+================================================================================
+3. ESTRUCTURA DE LA PARTIDA
+================================================================================
+
+3.1 FASES (CAMNYA DE DEMACIA)
+--------------------------------------------------------------------------------
+El joc actual implementa la regió de Demacia en 5 fases:
+
+  Fase 1 — Boss: Quinn        (nivell ~9)
+  Fase 2 — Boss: Poppy        (nivell ~20)
+  Fase 3 — Boss: Sylas         (nivell ~33)
+  Fase 4 — Boss: Galio         (nivell ~45)
+  Fase 5 — Boss: Demacia Protectors (equip de 5 bosses, nivell 55)
+
+3.2 FLUX GENERAL
+--------------------------------------------------------------------------------
+1. Inici de partida amb un equip administrador (5 campions al nivell 50)
+2. Exploració del mapa de nodes dins de cada fase
+3. Reclutament, millora i equipació d'objectes
+4. Combat contra el boss de la fase
+5. Curació completa i pas a la següent fase
+6. En superar la fase 5, victòria
+
+3.3 MAPA DE NODES
+--------------------------------------------------------------------------------
+Cada fase té un mapa de 17 nodes amb 7 nivells de profunditat (0-6):
+
+  Nivell 0: START (1 node)
+  Nivell 1: 3 nodes (A, B, C)
+  Nivell 2: 3 nodes (D, E, F)
+  Nivell 3: 4 nodes (G, H, I, J)
+  Nivell 4: 3 nodes (K, L, M)
+  Nivell 5: 2 nodes (N, O)
+  Nivell 6: BOSS (1 node)
+
+Estructura de connexions:
+  START -> A, B, C
+  A -> D | B -> E | C -> F
+  D -> G, H | E -> H, I | F -> I, J
+  G -> K | H -> K, L | I -> L, M | J -> M
+  K -> N | L -> N, O | M -> O
+  N -> BOSS | O -> BOSS
 
 
+================================================================================
+4. SISTEMA DE CAMPIONS
+================================================================================
+
+4.1 LLISTA DE CAMPIONS (16 campions de Demacia)
+--------------------------------------------------------------------------------
+  ID  Nom         Rol        Tipus de dany
+  --- ----------- ---------- --------------
+  1   Fiora       Fighter    Physical
+  2   Galio       Tank       Magical
+  3   Garen       Fighter    Physical
+  4   Jarvan IV   Fighter    Physical
+  5   Kayle       Marksman   Mixed
+  6   Lux         Mage       Magical
+  7   Lucian      Marksman   Physical
+  8   Morgana     Mage       Magical
+  9   Poppy       Tank       Physical
+  10  Quinn       Marksman   Physical
+  11  Shyvana     Fighter    Mixed
+  12  Sona        Support    Magical
+  13  Sylas       Mage       Magical
+  14  Vayne       Marksman   Physical
+  15  Xin Zhao    Fighter    Physical
+  16  Locke       Assassin   Magical
+
+4.2 ESTADÍSTIQUES
+--------------------------------------------------------------------------------
+Cada campió té les següents estadístiques base:
+  - HP màxima (maxHp)
+  - Atac (attack) — dany físic
+  - AP (ap) — dany màgic
+  - Armadura (armor) — reducció de dany físic
+  - Resistència màgica (magic_resist) — reducció de dany màgic
+  - Velocitat (speed) — determina qui ataca primer
+  - Tipus de dany (Physical, Magical, Mixed)
+
+4.3 SISTEMA DE PROGRESSIÓ (CREIXEMENT)
+--------------------------------------------------------------------------------
+Cada campió té 5 corbes de creixement independents:
+  - apGrowth        (creixement d'AP)
+  - attackGrowth    (creixement d'atac)
+  - hpGrowth        (creixement de HP)
+  - defenseGrowth   (creixement d'armadura)
+  - speedGrowth     (creixement de velocitat)
+
+Tipus de corba:
+  Early — Fort al principi (nivells 1-16), dèbil al final
+  Mid   — Dèbil al principi, fort al mig (17-32), dèbil al final
+  Late  — Dèbil al principi, fort al final (33-50)
+  Flat  — Creixement constant i moderat
+  None  — Sense creixement
+
+En pujar de nivell, cada stat augmenta segons:
+  increment = floor(ceil(baseStat * 0.05) * multiplier)
+
+El multiplicador depèn de la corba i el nivell actual.
+
+Pujades de nivell per combat:
+  - Duel guanyat:  +1 nivell
+  - Scrim guanyat: +3 nivells
+  - Boss guanyat:  +3 nivells
+
+4.4 RECLUTAMENT I SUBSTITUCIÓ
+--------------------------------------------------------------------------------
+- Els nodes de reclutament ofereixen 3 campions aleatoris.
+- El jugador en tria un (o pot fer skip).
+- Si l'equip té menys de 5 campions, s'afegeix directament.
+- Si l'equip està ple (5), apareix una pantalla de substitució on el jugador
+  clica quin campió vol substituir pel nou.
 
 
+================================================================================
+5. SISTEMA DE COMBATS
+================================================================================
+
+5.1 TIPUS DE COMBAT
+--------------------------------------------------------------------------------
+  Duel  — 1 campió enemic (nivell = depth del node)
+  Scrim — 5 campions enemics (nivell = depth + bonus per fase)
+  Boss  — 1 campió boss amb HP augmentada (o 5 a la fase 5)
+
+  El nombre de campions enemics per Duel augmenta per fase:
+    Fase 1: 1 enemic | Fase 2: 2 | Fase 3: 3 | Fase 4: 4 | Fase 5: 5
+
+5.2 FÓRMULA DE DANY
+--------------------------------------------------------------------------------
+  Physical:  dany = (atac efectiu * multiplicador) - (armor efectiva * 0.2)
+  Magical:   dany = (AP efectiu * multiplicador) - (MR efectiva * 0.2)
+  Mixed:     50% physical + 50% magical
+
+  El dany mínim és 1 (mai pot ser 0 o negatiu).
+
+5.3 VISUALITZACIÓ DEL COMBAT
+--------------------------------------------------------------------------------
+- Els combats es mostren en una pantalla overlay amb els dos equips en vertical.
+- Cada campió mostra el seu sprite, nom, rol, barra de vida i stats.
+- Animacions: el campió que ataca es destaca en groc, el que rep el cop fa
+  una animació de sacsejada en vermell, els morts es tornen grisos.
+- La barra de vida baixa amb animació (transition 0.5s).
+- Un log a sota mostra els últims missatges del combat.
 
 
-8. Sistema de bosses
-8.1 Boss de secció
-Cada secció finalitza amb un boss.
-Característiques:
-* Representació d’un campió o entitat de la regió
-* Habilitats adaptades a la composició típica de la zona
-* Dificultat progressiva
-8.2 Boss final de regió
-Cada regió culmina amb un combat final més complex.
-Proposta:
-* Equip complet de 5 campions emblemàtics de la regió
-* Combats tipus “raid”
-* Alta dificultat i gran recompensa
-9. Disseny estratègic
-El sistema es basa en tres pilars:
-9.1 Sinergies d’equip
-* Bonus per combinacions de classes o regions
-* Estil similar a sistemes d’autobattlers
-9.2 Adaptació al context
-* Regions modifiquen les regles del joc
-* El jugador ha d’adaptar la composició constantment
-9.3 Decisió constant
-* Elecció de campions en nodes
-* Gestió de recursos
-* Risc vs recompensa en esdeveniments
+================================================================================
+6. PASSIVES DELS CAMPIONS
+================================================================================
+Cada campió té una passiva única que s'activa automàticament durant el combat:
+
+  Fiora    — Cada 3r atac fa +25% de dany
+  Galio    — Rep un 20% menys de dany màgic
+  Garen    — Regenera un 5% de vida després de cada atac que rep
+  Jarvan   — Cada 2 atacs treu un 5% de la vida màxima del rival
+  Kayle    — Nivell 15: +5 atac | Nivell 30: +10 AP | Nivell 50: +15 atac
+  Locke    — Cada 2 atacs redueix un 5% la velocitat del rival
+  Lucian   — Cada 3r atac ataca 2 cops seguits
+  Lux      — Cada 4t atac fa un burst de dany extra
+  Morgana  — Es cura un 10% del dany que fa
+  Poppy    — Cada 2 atacs rebuts, +5% armor i MR (només durant el combat)
+  Quinn    — Cada 2 atacs baixa un 5% l'armor i la MR del rival
+  Shyvana  — Per cada duel/scrim guanyat, +2 armor i +2 MR permanents
+  Sona     — +5% damage a tot l'equip cada 2 atacs (només combat)
+  Sylas    — Cada 3r atac roba AP temporal i el converteix en dany
+  Vayne    — Cada 3 atacs fa dany directe ignorant armor i MR del rival
+  Xin Zhao — Cada 4t atac fa un burst i es cura
 
 
+================================================================================
+7. SINERGIES D'EQUIP
+================================================================================
+Es calculen automàticament al començament de cada combat segons el nombre de
+campions de cada rol a l'equip:
+
+  ROL        2 campions              4 campions
+  ---------- ----------------------- --------------------------
+  Tank       +5 armor, +5 MR         +10 armor, +10 MR
+  Fighter    +10 atac                +20 atac
+  Assassin   Execute al 5% de vida   Execute al 10% de vida
+  Mage       +10 AP                  +20 AP
+  Marksman   +5% speed               +10% speed
+  Support    +5% healing post-atac   +10% healing post-atac
 
 
+================================================================================
+8. SISTEMA D'OBJECTES
+================================================================================
+
+8.1 OBJECTES BÀSICS
+--------------------------------------------------------------------------------
+  Nom                Efecte
+  ------------------ ----------------------------
+  Long Sword         +10 atac
+  Magic Tome         +10 AP
+  Ruby Crystal       +5 HP
+  Cloth Armor        +5 armor
+  Null Magic Mantle  +5 resistència màgica
+  Dagger             +5% velocitat
+  +1 Level           Consumible: puja 1 nivell
+  Damage Shifter     Canvia el tipus de dany del campió
+
+8.2 OBJECTES LLEGENDARIS
+--------------------------------------------------------------------------------
+  Nom                Efecte
+  ------------------ ----------------------------
+  Infinity Edge      +20 atac
+  Luden's Echo       +20 AP
+  Warmog's Armor     +15 HP
+  Sunfire Cape       +15 armor
+  Force of Nature    +15 armor
+  Phantom Dancer     +10% velocitat
+
+8.3 PASSIVES D'OBJECTES
+--------------------------------------------------------------------------------
+Els items de passiva donen a un campió la passiva d'un altre campió:
+  Fiora, Jarvan IV, Lux, Vayne, Quinn, Locke, Sylas, Xin Zhao, Lucian,
+  Morgana, Galio, Garen, Poppy, Shyvana
+
+8.4 BOSSA I EQUIPACIÓ
+--------------------------------------------------------------------------------
+- Els objectes es poden guardar a la bossa (visible sempre al header).
+- Es poden equipar/intercanviar als campions en qualsevol moment (fora de combat).
+- Si un campió ja té un item equipat, es desequipa automàticament i es torna
+  a la bossa quan se'n equipa un de nou.
+- Es pot desequipar un item manualment per tornar-lo a la bossa.
+- Cada campió només pot tenir 1 item equipat (excepte consumibles de nivell).
 
 
-10. Conclusió de disseny
-El projecte proposa un roguelike de construcció d’equips basat en campions, amb progressió per regions i fort component estratègic. La clau del sistema és la combinació entre:
-* Variabilitat de campions
-* Identitat mecànica de cada regió
-* Sinergies i escalat de poder
-* Decisió contínua en nodes
-Aquest disseny prioritza rejugabilitat, diversitat de runs i profunditat estratègica sense limitar excessivament les opcions del jugador.
+================================================================================
+9. NODES DEL MAPA
+================================================================================
+
+9.1 TIPUS DE NODES
+--------------------------------------------------------------------------------
+  Start          — Node inicial de la fase
+  Duel           — Combat 1vN (segons fase)
+  Scrim          — Combat 5v5 (alta dificultat, alta recompensa)
+  Recruit        — Recluta un campió (3 opcions + skip)
+  ChooseNewChamp — Tria un campió nou (3 opcions)
+  Objects        — Tria un objecte (3 opcions)
+  Bard           — Esdeveniment aleatori amb risc/recompensa
+  Heal           — Curació completa de l'equip
+  Boss           — Combat contra el boss de la fase
+
+9.2 RESTRICCIONS PER FASE
+--------------------------------------------------------------------------------
+- Només 1 node de Scrim per fase (al nivell 3 del mapa)
+- Només 1 node de Bard per fase (a partir del nivell 3)
+- Un dels 2 últims nodes (nivell 5) ha de ser obligatòriament de curació (Heal)
+- Els 3 primers nodes (nivell 1) sempre contenen 1 Duel i 1 Recruit
+
+
+================================================================================
+10. SISTEMA DEL BARD
+================================================================================
+El Bard ofereix 3 opcions aleatòries d'entre 6 possibles:
+
+  The lost meep      — 70%: guanya un item bàsic | 30%: duel
+  Misterious Portal  — 50%: cura 50% de l'equip | 50%: combat especial
+  Sacrifice          — El campió més fort perd 3 nivells, guanya un item llegendari
+  Bard's melody      — Cura parcial de l'equip
+  The pass of time   — Tot l'equip guanya stats permanents
+  Old age            — Redueix la HP màxima de l'equip però dona recompenses
+
+
+================================================================================
+11. SISTEMA DE BOSSES
+================================================================================
+
+  Fase  Boss                  Nivell  HP    Notes
+  ----- --------------------- ------- ----- ---------------------------
+  1     Quinn                 9       180   1 campió boss
+  2     Poppy                 20      260   1 campió boss
+  3     Sylas                 33      320   1 campió boss
+  4     Galio                 45      380   1 campió boss
+  5     Demacia Protectors    55      —     Equip de 5 bosses:
+                                            Garen (260), Lux (220),
+                                            Sona (210), Kayle (230),
+                                            Jarvan IV (260)
+
+Els bosses tenen HP augmentada respecte al campió base i el flag isBoss activat.
+
+
+================================================================================
+12. DISSENY D'INTERFÍCIE
+================================================================================
+- Font pixelada: "Press Start 2P" de Google Fonts
+- Fons: imatges de fons per cada fase de Demacia
+- Header: ronda actual + bossa d'items visible (clicables per equipar)
+- Equip: panell horitzontal a la part superior amb targetes de campions
+- Mapa: graella de nodes d'esquerra a dreta amb sprites, línies de connexió
+  i nodes clicables (només els possibles des del node actual)
+- Overlays: pantalles de reclutament, substitució, objectes i combat
+  que apareixen al mig sobre un fons semitransparent
+- Combat: dos equips en vertical amb sprites, barres de vida animades
+  i log de missatges
+
+
+================================================================================
+13. CONCLUSIÓ
+================================================================================
+LoLELIKE és un roguelike de construcció d'equips amb:
+- 16 campions de Demacia, cadascun amb passiva única
+- 5 fases amb bosses progressius
+- Sistema de creixement amb corbes Early/Mid/Late/Flat/None
+- Sinergies d'equip basades en rols
+- Sistema d'objectes amb bossa, equipació i intercanvi
+- Nodes del mapa amb restriccions (1 Scrim, 1 Bard, 1 Heal obligatori)
+- Visualització de combats amb animacions
+- Interfície amb font pixelada i sprites de campions i objectes
+
+El disseny prioritza la rejugabilitat, la varietat de decisions i la
+profunditat estratègica sense limitar excessivament les opcions del jugador.
