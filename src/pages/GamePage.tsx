@@ -44,6 +44,7 @@ import demaciaPhaseFinalBg from "../assets/backgrounds/Demacia - Fase final.jfif
 import menuImage from "../assets/UI/Menu image.png";
 import startButtonBg from "../assets/UI/Start button.png";
 import settingsPageBg from "../assets/UI/Settings page.png";
+import settingsIcon from "../assets/UI/Settings icon.png";
 import bgMusic from "../assets/music/Medieval background music.mp3";
 import audioManager from "../audio/AudioManager";
 import "../App.css";
@@ -108,6 +109,7 @@ export default function GamePage() {
   const [battleEvents, setBattleEvents] = useState<BattleEvent[]>([]);
   const [battleIsDuel, setBattleIsDuel] = useState(false);
   const [battleAliveAtStartIds, setBattleAliveAtStartIds] = useState<number[]>([]);
+  const [battleDamageDealt, setBattleDamageDealt] = useState<Record<number, number>>({});
   const [battleTeamA, setBattleTeamA] = useState<Champion[]>([]);
   const [battleTeamB, setBattleTeamB] = useState<Champion[]>([]);
   const [pendingItem, setPendingItem] = useState<InventoryItem | null>(null);
@@ -248,6 +250,7 @@ export default function GamePage() {
           setBattleEvents(result.events);
           setBattleIsDuel(result.isDuel);
           setBattleAliveAtStartIds(aliveAtStartIds);
+          setBattleDamageDealt(result.damageDealt);
           setScreen("battle");
           break;
         }
@@ -539,6 +542,7 @@ export default function GamePage() {
         setBattleEvents(result.events);
         setBattleIsDuel(result.isDuel);
         setBattleAliveAtStartIds(aliveAtStartIds);
+        setBattleDamageDealt(result.damageDealt);
         setScreen("battle");
       } else {
         forceUpdate();
@@ -548,47 +552,6 @@ export default function GamePage() {
     },
     [bardOptions, pushLog, forceUpdate]
   );
-
-  if (screen === "settings") {
-    return (
-      <div className="game-page game-page--start">
-        <div
-          className="game-page__background"
-          aria-hidden="true"
-          style={{ backgroundImage: `url(${menuImage})` }}
-        />
-        <div className="game-page__overlay">
-          <div
-            className="game-page__settings-image-panel"
-            style={{ backgroundImage: `url(${settingsPageBg})` }}
-          >
-            <div className="game-page__settings-panel">
-              <h2 className="game-page__settings-title">SETTINGS</h2>
-              <div className="game-page__settings-option">
-                <span className="game-page__settings-label">Music volume: {Math.round(musicVolume * 100)}%</span>
-                <input
-                  className="game-page__volume-slider"
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={musicVolume}
-                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                />
-              </div>
-              <button
-                className="game-page__menu-btn game-page__menu-btn--back"
-                onClick={() => setScreen("idle")}
-                style={{ backgroundImage: `url(${startButtonBg})` }}
-              >
-                <span className="game-page__menu-btn-text">BACK</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!runRef.current || !mapRef.current) {
     return (
@@ -614,6 +577,37 @@ export default function GamePage() {
             <span className="game-page__menu-btn-text">SETTINGS</span>
           </button>
         </div>
+        {screen === "settings" && (
+          <div className="game-page__overlay">
+            <div
+              className="game-page__settings-image-panel"
+              style={{ backgroundImage: `url(${settingsPageBg})` }}
+            >
+              <div className="game-page__settings-panel">
+                <h2 className="game-page__settings-title">SETTINGS</h2>
+                <div className="game-page__settings-option">
+                  <span className="game-page__settings-label">Music volume: {Math.round(musicVolume * 100)}%</span>
+                  <input
+                    className="game-page__volume-slider"
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={musicVolume}
+                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                  />
+                </div>
+                <button
+                  className="game-page__menu-btn game-page__menu-btn--back"
+                  onClick={() => setScreen("idle")}
+                  style={{ backgroundImage: `url(${startButtonBg})` }}
+                >
+                  <span className="game-page__menu-btn-text">BACK</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -632,6 +626,13 @@ export default function GamePage() {
       <div className="game-page__content">
       <header className="game-page__header">
         <div className="game-page__info">
+          <button
+            className="game-page__settings-icon"
+            onClick={() => setScreen("settings")}
+            title="Settings"
+          >
+            <img src={settingsIcon} alt="Settings" />
+          </button>
         </div>
         <div
           className="game-page__bag"
@@ -725,18 +726,30 @@ export default function GamePage() {
 
       <main className="game-page__main">
         <section className="game-page__teams">
-          {enemyTeam.length > 0 && (screen === "battle-result" || screen === "game-over") && (
+          {enemyTeam.length > 0 && screen === "battle-result" && (
             <TeamPanel title="Enemy team" team={enemyTeam} highlightDead />
           )}
         </section>
 
         <section className="game-page__side">
           {screen === "game-over" && (
-            <div className="game-page__result game-page__result--over">
-              <h3>GAME OVER</h3>
-              <button className="game-page__start-btn" onClick={startGame}>
-                Restart
-              </button>
+            <div className="game-page__overlay">
+              <div className="game-page__overlay-panel game-page__game-over-panel">
+                <h3 className="game-page__game-over-title">GAME OVER</h3>
+                <div className="game-page__game-over-team">
+                  {battleTeamA.map((c) => (
+                    <div key={c.id} className="game-page__game-over-champ">
+                      <ChampionCard champion={c} isDead={c.currentHp <= 0} />
+                      <span className="game-page__game-over-damage">
+                        Damage dealt: {battleDamageDealt[c.id] ?? 0}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <button className="game-page__reset-btn" onClick={startGame}>
+                  Reset run
+                </button>
+              </div>
             </div>
           )}
 
@@ -899,6 +912,38 @@ export default function GamePage() {
           events={battleEvents}
           onFinished={handleBattleFinished}
         />
+      )}
+
+      {screen === "settings" && (
+        <div className="game-page__overlay">
+          <div
+            className="game-page__settings-image-panel"
+            style={{ backgroundImage: `url(${settingsPageBg})` }}
+          >
+            <div className="game-page__settings-panel">
+              <h2 className="game-page__settings-title">SETTINGS</h2>
+              <div className="game-page__settings-option">
+                <span className="game-page__settings-label">Music volume: {Math.round(musicVolume * 100)}%</span>
+                <input
+                  className="game-page__volume-slider"
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={musicVolume}
+                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                />
+              </div>
+              <button
+                className="game-page__menu-btn game-page__menu-btn--back"
+                onClick={() => setScreen("idle")}
+                style={{ backgroundImage: `url(${startButtonBg})` }}
+              >
+                <span className="game-page__menu-btn-text">BACK</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       </div>
     </div>

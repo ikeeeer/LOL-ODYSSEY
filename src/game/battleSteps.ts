@@ -26,6 +26,7 @@ export interface BattleResult {
   events: BattleEvent[];
   teamAWins: boolean;
   isDuel: boolean;
+  damageDealt: Record<number, number>;
 }
 
 function resolveAttackStep(
@@ -174,17 +175,25 @@ export function simulateBattleStepByStep(
     applyPostBattleBonuses(teamA);
     events.push({
       type: "end",
-      message: "Team A WINS!",
+      message: "YOU WIN!",
       hpSnapshot: { ...hpMap },
     });
   } else {
     applyPostBattleBonuses(teamB);
     events.push({
       type: "end",
-      message: "Team B WINS!",
+      message: "GAME OVER",
       hpSnapshot: { ...hpMap },
     });
   }
 
-  return { events, teamAWins, isDuel };
+  // Calcula el dany total per campió
+  const damageDealt: Record<number, number> = {};
+  events.forEach((e) => {
+    if (e.type === "attack" && e.attackerId !== undefined && e.damage) {
+      damageDealt[e.attackerId] = (damageDealt[e.attackerId] || 0) + e.damage;
+    }
+  });
+
+  return { events, teamAWins, isDuel, damageDealt };
 }

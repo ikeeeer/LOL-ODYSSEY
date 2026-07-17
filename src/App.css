@@ -491,6 +491,29 @@
   flex-wrap: wrap;
 }
 
+.game-page__settings-icon {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.2s;
+}
+
+.game-page__settings-icon:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.game-page__settings-icon:active {
+  transform: scale(0.95);
+}
+
+.game-page__settings-icon img {
+  width: 50px;
+  height: 40px;
+  display: block;
+}
+
 /* Bossa d'items */
 .game-page__bag {
   display: flex;
@@ -1233,6 +1256,63 @@
 
 .game-page__result--over h3 {
   color: #e74c3c;
+}
+
+/* Game over overlay */
+.game-page__game-over-panel {
+  align-items: center;
+  text-align: center;
+}
+
+.game-page__game-over-title {
+  font-family: var(--heading);
+  font-size: 20px;
+  color: #e74c3c;
+  margin: 0 0 16px 0;
+  letter-spacing: 3px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.game-page__game-over-team {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.game-page__game-over-champ {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.game-page__game-over-damage {
+  font-size: 8px;
+  color: var(--accent);
+}
+
+.game-page__reset-btn {
+  font-family: var(--heading);
+  font-size: 14px;
+  color: #000;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 8px;
+  padding: 12px 32px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s;
+  letter-spacing: 2px;
+}
+
+.game-page__reset-btn:hover {
+  transform: scale(1.05);
+  background: #e0e0e0;
+}
+
+.game-page__reset-btn:active {
+  transform: scale(0.97);
 }
 
 .game-page__result--win h3 {
