@@ -754,11 +754,23 @@ export default function GamePage() {
           )}
 
           {screen === "victory" && (
-            <div className="game-page__result game-page__result--win">
-              <h3>🏆 You completed all phases!</h3>
-              <button className="game-page__start-btn" onClick={startGame}>
-                New game
-              </button>
+            <div className="game-page__overlay">
+              <div className="game-page__overlay-panel game-page__game-over-panel">
+                <h3 className="game-page__game-over-title">YOU WIN</h3>
+                <div className="game-page__game-over-team">
+                  {battleTeamA.map((c) => (
+                    <div key={c.id} className="game-page__game-over-champ">
+                      <ChampionCard champion={c} isDead={c.currentHp <= 0} />
+                      <span className="game-page__game-over-damage">
+                        Damage dealt: {battleDamageDealt[c.id] ?? 0}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <button className="game-page__reset-btn" onClick={startGame}>
+                  Reset run
+                </button>
+              </div>
             </div>
           )}
         </section>
