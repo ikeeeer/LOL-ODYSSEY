@@ -24,6 +24,8 @@ export interface BardBattle {
 export interface BardResolution {
   message: string;
   battle?: BardBattle;
+  // Item obtingut (p. ex. del meep perdut) que el jugador ha de decidir si equipa o guarda.
+  rewardItem?: InventoryItem;
 }
 
 interface BardRunContext {
@@ -118,8 +120,10 @@ export async function resolveBardOption(
     case "lost-meep": {
       if (Math.random() < 0.7) {
         const reward = getRandomBasicItem();
-        run.addItemToBag(reward);
-        return { message: `You saved the meep and gained ${reward.name}.` };
+        return {
+          message: `You saved the meep and gained ${reward.name}.`,
+          rewardItem: reward
+        };
       }
 
       return {

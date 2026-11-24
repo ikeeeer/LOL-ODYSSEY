@@ -40,7 +40,10 @@ function BattleChampion({ champion, currentHp, isAttacking, isHit, isDead }: Bat
           <img className="battle-champ__sprite" src={sprite} alt={champion.name} />
         </div>
       )}
-      <div className="battle-champ__name">{champion.name}</div>
+      <div className="battle-champ__header">
+        <span className="battle-champ__name">{champion.name}</span>
+        <span className="battle-champ__level">Lvl {champion.level}</span>
+      </div>
       <div className="battle-champ__role">
         {roleLabels[champion.role]} · {damageTypeLabels[champion.damageType]}
       </div>

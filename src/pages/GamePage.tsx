@@ -19,7 +19,7 @@ import { simulateBattleStepByStep } from "../game/battleSteps";
 import type { BattleEvent } from "../game/battleSteps";
 import { getBardNodeOptions, resolveBardOption } from "../game/bard";
 import type { BardOption } from "../game/bard";
-import { fullHealAndRevive, levelUpTeam } from "../game/leveling";
+import { fullHealAndRevive, healTeam, levelUpTeam } from "../game/leveling";
 import {
   applyItemToChampion,
   canEquipItem,
@@ -34,6 +34,7 @@ import ChampionCard from "../components/ChampionCard";
 import BattleView from "../components/BattleView";
 import ItemOptionCard from "../components/ItemOptionCard";
 import BardOptionCard from "../components/BardOptionCard";
+import StoryScreen from "../components/StoryScreen";
 import { getItemSprite } from "../game/itemSprites";
 import { getChampionSprite } from "../game/sprites";
 import demaciaPhase1Bg from "../assets/backgrounds/Demacia - Fase 1.jfif";
@@ -57,6 +58,12 @@ const phaseBackgrounds: Record<number, string> = {
   5: demaciaPhaseFinalBg,
 };
 
+// Recuperació de vida que reben els supervivents en guanyar un combat.
+const POST_BATTLE_HEAL_PERCENT = 0.3;
+
+// Nivell inicial del campió amb què comença la run i dels campions oferts a reclutar.
+const STARTING_LEVEL = 3;
+
 type Screen =
   | "idle"
   | "recruit"
@@ -70,7 +77,11 @@ type Screen =
   | "heal"
   | "game-over"
   | "victory"
-  | "settings";
+  | "settings"
+  | "story";
+
+// Clau de localStorage per mostrar la història només la primera visita.
+const STORY_SEEN_KEY = "lolelike.storySeen";
 
 function BagItemIcon({ item }: { item: InventoryItem }) {
   let sprite: string | undefined;
@@ -113,14 +124,33 @@ export default function GamePage() {
   const [battleTeamA, setBattleTeamA] = useState<Champion[]>([]);
   const [battleTeamB, setBattleTeamB] = useState<Champion[]>([]);
   const [pendingItem, setPendingItem] = useState<InventoryItem | null>(null);
+  // Indica si l'item pendent és un premi (p. ex. del meep) que no es pot descartar.
+  const [pendingItemIsReward, setPendingItemIsReward] = useState(false);
   const [bagItem, setBagItem] = useState<InventoryItem | null>(null);
   const [musicVolume, setMusicVolume] = useState(audioManager.getVolume());
+  // La història es mostra automàticament només la primera vegada que s'obre el joc.
+  const [showStory, setShowStory] = useState(() => {
+    try {
+      return localStorage.getItem(STORY_SEEN_KEY) !== "true";
+    } catch {
+      return true;
+    }
+  });
 
   const forceUpdate = useCallback(() => setTick((t) => t + 1), []);
 
   // Inicia la música de fons en bucle
   useEffect(() => {
     audioManager.play(bgMusic);
+  }, []);
+
+  const closeStory = useCallback(() => {
+    setShowStory(false);
+    try {
+      localStorage.setItem(STORY_SEEN_KEY, "true");
+    } catch {
+      // localStorage pot no estar disponible (mode privat); simplement no persistim.
+    }
   }, []);
 
   const handleVolumeChange = useCallback((volume: number) => {
@@ -147,10 +177,10 @@ export default function GamePage() {
 
   const startGame = useCallback(() => {
     const newRun = new Run([], [], Region.Demacia);
-    // Mode normal: comença amb un campió aleatori de nivell 1
+    // Mode normal: comença amb un campió aleatori de nivell 3
     const pool = DEMACIA_CHAMPIONS.filter((c) => c.region === Region.Demacia);
     const randomBase = pool[Math.floor(Math.random() * pool.length)];
-    const starter = createChampionInstance({ ...randomBase, level: 1 });
+    const starter = createChampionInstance({ ...randomBase, level: STARTING_LEVEL });
     newRun.addChampionToPlayer(starter);
 
     const newMap = buildInitialMap();
@@ -160,6 +190,24 @@ export default function GamePage() {
     runRef.current = newRun;
     mapRef.current = newMap;
     setLog([`Starting champion: ${starter.name}`]);
+    setScreen("idle");
+    forceUpdate();
+  }, [forceUpdate]);
+
+  const returnToMenu = useCallback(() => {
+    runRef.current = null;
+    mapRef.current = null;
+    setLog([]);
+    setEnemyTeam([]);
+    setBattleTeamA([]);
+    setBattleTeamB([]);
+    setBattleEvents([]);
+    setBattleDamageDealt({});
+    setPendingItem(null);
+    setPendingItemIsReward(false);
+    setBagItem(null);
+    setPendingChampion(null);
+    setPendingBardOption(null);
     setScreen("idle");
     forceUpdate();
   }, [forceUpdate]);
@@ -352,6 +400,8 @@ export default function GamePage() {
         levelUpTeam(run.playerTeam, aliveAtStart);
         levelUpTeam(run.playerTeam, aliveAtStart);
       }
+      // Recuperació en guanyar: els supervivents es curen un 30% de la vida màxima
+      healTeam(run.playerTeam, POST_BATTLE_HEAL_PERCENT);
     }
 
     forceUpdate();
@@ -389,6 +439,7 @@ export default function GamePage() {
     (index: number) => {
       const item = itemOptions[index];
       setPendingItem(item);
+      setPendingItemIsReward(false);
       setScreen("equip-item");
     },
     [itemOptions]
@@ -400,6 +451,7 @@ export default function GamePage() {
     run.addItemToBag(pendingItem);
     pushLog(`Has guardat ${pendingItem.name} a la bossa.`);
     setPendingItem(null);
+    setPendingItemIsReward(false);
     forceUpdate();
     setScreen("idle");
   }, [pendingItem, pushLog, forceUpdate]);
@@ -429,6 +481,7 @@ export default function GamePage() {
       const message = applyItemToChampion(target, pendingItem, damageTarget);
       pushLog(message);
       setPendingItem(null);
+      setPendingItemIsReward(false);
       forceUpdate();
       setScreen("idle");
     },
@@ -437,6 +490,7 @@ export default function GamePage() {
 
   const handleCancelEquipItem = useCallback(() => {
     setPendingItem(null);
+    setPendingItemIsReward(false);
     setScreen("idle");
   }, []);
 
@@ -544,6 +598,12 @@ export default function GamePage() {
         setBattleAliveAtStartIds(aliveAtStartIds);
         setBattleDamageDealt(result.damageDealt);
         setScreen("battle");
+      } else if (resolution.rewardItem) {
+        // Mostra l'item obtingut i deixa triar: equipar-lo o guardar-lo a la bossa
+        setPendingItem(resolution.rewardItem);
+        setPendingItemIsReward(true);
+        forceUpdate();
+        setScreen("equip-item");
       } else {
         forceUpdate();
         setScreen("idle");
@@ -597,6 +657,16 @@ export default function GamePage() {
                     onChange={(e) => handleVolumeChange(Number(e.target.value))}
                   />
                 </div>
+                <div className="game-page__settings-option">
+                  <span className="game-page__settings-label">Story</span>
+                  <button
+                    className="game-page__settings-story-btn"
+                    onClick={() => setScreen("story")}
+                    style={{ backgroundImage: `url(${startButtonBg})` }}
+                  >
+                    <span className="game-page__settings-story-btn-text">VIEW STORY</span>
+                  </button>
+                </div>
                 <button
                   className="game-page__menu-btn game-page__menu-btn--back"
                   onClick={() => setScreen("idle")}
@@ -608,6 +678,8 @@ export default function GamePage() {
             </div>
           </div>
         )}
+        {showStory && <StoryScreen onClose={closeStory} />}
+        {screen === "story" && <StoryScreen onClose={() => setScreen("settings")} />}
       </div>
     );
   }
@@ -746,9 +818,14 @@ export default function GamePage() {
                     </div>
                   ))}
                 </div>
-                <button className="game-page__reset-btn" onClick={startGame}>
-                  Reset run
-                </button>
+                <div className="game-page__game-over-actions">
+                  <button className="game-page__reset-btn" onClick={startGame}>
+                    Play again
+                  </button>
+                  <button className="game-page__reset-btn game-page__reset-btn--secondary" onClick={returnToMenu}>
+                    Main menu
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -767,9 +844,14 @@ export default function GamePage() {
                     </div>
                   ))}
                 </div>
-                <button className="game-page__reset-btn" onClick={startGame}>
-                  Reset run
-                </button>
+                <div className="game-page__game-over-actions">
+                  <button className="game-page__reset-btn" onClick={startGame}>
+                    Play again
+                  </button>
+                  <button className="game-page__reset-btn game-page__reset-btn--secondary" onClick={returnToMenu}>
+                    Main menu
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -860,7 +942,13 @@ export default function GamePage() {
       {screen === "equip-item" && pendingItem && (
         <div className="game-page__overlay">
           <div className="game-page__overlay-panel">
-            <h3>{pendingItem.name} — {formatItemEffect(pendingItem)}</h3>
+            <h3>You obtained an item!</h3>
+            <div className="game-page__reward-item">
+              <ItemOptionCard item={pendingItem} />
+            </div>
+            <p className="game-page__equip-hint">
+              Equip it to a champion or store it in your bag.
+            </p>
             <div className="game-page__replace-grid">
               {run.playerTeam.map((c, i) => (
                 <button
@@ -877,9 +965,11 @@ export default function GamePage() {
               <button className="option-card" onClick={handleStoreItemInBag}>
                 Store in bag
               </button>
-              <button className="option-card option-card--skip" onClick={handleCancelEquipItem}>
-                Cancel
-              </button>
+              {!pendingItemIsReward && (
+                <button className="option-card option-card--skip" onClick={handleCancelEquipItem}>
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -946,6 +1036,16 @@ export default function GamePage() {
                   onChange={(e) => handleVolumeChange(Number(e.target.value))}
                 />
               </div>
+              <div className="game-page__settings-option">
+                <span className="game-page__settings-label">Story</span>
+                <button
+                  className="game-page__settings-story-btn"
+                  onClick={() => setScreen("story")}
+                  style={{ backgroundImage: `url(${startButtonBg})` }}
+                >
+                  <span className="game-page__settings-story-btn-text">VIEW STORY</span>
+                </button>
+              </div>
               <button
                 className="game-page__menu-btn game-page__menu-btn--back"
                 onClick={() => setScreen("idle")}
@@ -957,6 +1057,7 @@ export default function GamePage() {
           </div>
         </div>
       )}
+      {screen === "story" && <StoryScreen onClose={() => setScreen("settings")} />}
       </div>
     </div>
   );

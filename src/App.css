@@ -183,10 +183,29 @@
   object-fit: contain;
 }
 
+.battle-champ__header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
 .battle-champ__name {
   font-size: 9px;
   font-weight: 600;
   color: var(--text-h);
+}
+
+.battle-champ__level {
+  font-size: 8px;
+  font-weight: 700;
+  color: #f1c40f;
+  background: rgba(241, 196, 15, 0.15);
+  border: 1px solid rgba(241, 196, 15, 0.5);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 12px;
 }
 
 .battle-champ__role {
@@ -381,6 +400,152 @@
   font-family: var(--heading);
   font-size: 12px;
   color: var(--text);
+}
+
+.game-page__settings-story-btn {
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 220px;
+  height: 46px;
+}
+
+.game-page__settings-story-btn-text {
+  font-family: var(--heading);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #f1c40f;
+}
+
+.game-page__settings-story-btn:hover {
+  transform: scale(1.05);
+  filter: brightness(1.15);
+}
+
+.game-page__settings-story-btn:active {
+  transform: scale(0.97);
+}
+
+/* Story screen: el marc és la imatge de Settings page i el contingut va a sobre */
+.game-page__story-frame {
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* Mateixa proporció que la imatge (1024x768) perquè el marc no es deformi.
+     L'amplada queda limitada tant per l'ample com per l'alt de la pantalla. */
+  width: min(92vw, 122.6vh);
+  aspect-ratio: 4 / 3;
+  position: relative;
+  /* Permet que els fills usin cqw/cqh i escalin amb el marc, no amb la finestra */
+  container-type: size;
+  container-name: storyframe;
+}
+
+.game-page__story-panel {
+  /* Inset en % del propi marc: manté el text dins de l'àrea interior
+     i allunyat dels ornaments de les cantonades a qualsevol resolució. */
+  position: absolute;
+  inset: 17% 16% 8%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1cqh;
+}
+
+.game-page__story-title {
+  font-family: var(--heading);
+  /* Escala amb l'amplada del marc (cqw) amb límits per a pantalles molt grans/petites */
+  font-size: clamp(14px, 1.85cqw, 24px);
+  color: #f1c40f;
+  margin: 0 0 0.5em 0;
+  letter-spacing: 2px;
+  text-align: center;
+  flex-shrink: 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.game-page__story-body {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  font-size: clamp(9.5px, 1.04cqw, 13.5px);
+  line-height: 1.4;
+  color: #e6e6ee;
+  text-align: center;
+  /* Amplada limitada i centrada: el text no arriba mai als ornaments laterals */
+  width: 100%;
+  max-width: 78cqw;
+  flex: 0 1 auto;
+  min-height: 0;
+  padding-right: 4px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.game-page__story-body p {
+  margin: 0 0 0.7em 0;
+}
+
+.game-page__story-body ul {
+  margin: 0 0 0.7em 0;
+  padding: 0;
+  list-style: none;
+}
+
+.game-page__story-body li {
+  margin-bottom: 0.3em;
+}
+
+.game-page__story-body strong {
+  color: #f1c40f;
+}
+
+.game-page__story-final {
+  color: #f1c40f;
+  font-weight: 700;
+  text-align: center;
+}
+
+.game-page__story-close {
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.2s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(170px, 28cqw, 340px);
+  aspect-ratio: 5 / 1;
+}
+
+.game-page__story-close-text {
+  font-family: var(--heading);
+  font-size: clamp(10px, 1.2cqw, 16px);
+  letter-spacing: 2px;
+  color: #f1c40f;
+}
+
+.game-page__story-close:hover {
+  transform: scale(1.05);
+  filter: brightness(1.15);
+}
+
+.game-page__story-close:active {
+  transform: scale(0.97);
 }
 
 .game-page__volume-slider {
@@ -1313,6 +1478,29 @@
 
 .game-page__reset-btn:active {
   transform: scale(0.97);
+}
+
+.game-page__game-over-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.game-page__reset-btn--secondary {
+  background: transparent;
+  color: #6e3567;
+  border-color: #000000;
+}
+
+.game-page__reset-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.game-page__reward-item {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
 }
 
 .game-page__result--win h3 {

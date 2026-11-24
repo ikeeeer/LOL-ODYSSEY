@@ -1,6 +1,19 @@
 import type { Champion } from "./types";
 import { GrowthCurve } from "./types";
 
+type GrowthStat = "maxHp" | "attack" | "armor" | "speed" | "ap";
+type GrowthCarry = Record<GrowthStat, number>;
+type GrowthIncreases = Record<GrowthStat, number>;
+
+// Els increments fraccionaris es guarden per campió i s'acumulen entre nivells.
+// Sense això, els stats de base baixa (atac de Poppy, AP de Galio) arrodonien
+// sempre a 0 i el campió no creixia mai en tota la partida.
+const growthCarryByChampion = new WeakMap<Champion, GrowthCarry>();
+
+// Pila d'increments aplicats, perquè levelDownChampion pugui revertir exactament
+// el que va aplicar levelUpChampion (incloent-hi els residus fraccionaris).
+const appliedIncreasesByChampion = new WeakMap<Champion, GrowthIncreases[]>();
+
 function getGrowthMultiplier(currentLevel: number, growthCurve: GrowthCurve): number {
   const level = currentLevel; // Nivel actual (1-50)
 
@@ -35,33 +48,57 @@ function getGrowthMultiplier(currentLevel: number, growthCurve: GrowthCurve): nu
   }
 }
 
-function calculateStatIncrease(baseStat: number, growthCurve: GrowthCurve, currentLevel: number): number {
-  const multiplier = getGrowthMultiplier(currentLevel, growthCurve);
-  const baseIncrease = Math.ceil(baseStat * 0.05); // 5% del stat base
-  return Math.floor(baseIncrease * multiplier);
+function accumulateStatIncrease(
+  champion: Champion,
+  stat: GrowthStat,
+  baseStat: number,
+  growthCurve: GrowthCurve
+): number {
+  if (growthCurve === GrowthCurve.None) {
+    return 0;
+  }
+
+  const multiplier = getGrowthMultiplier(champion.level, growthCurve);
+  const baseIncrease = Math.ceil(baseStat * 0.05);
+  let carry = growthCarryByChampion.get(champion);
+  if (!carry) {
+    carry = { maxHp: 0, attack: 0, armor: 0, speed: 0, ap: 0 };
+    growthCarryByChampion.set(champion, carry);
+  }
+
+  carry[stat] += baseIncrease * multiplier;
+  const wholeIncrease = Math.floor(carry[stat]);
+  carry[stat] -= wholeIncrease;
+  return wholeIncrease;
 }
 
 export function levelUpChampion(champion: Champion): void {
   champion.level += 1;
 
   // Calcular incrementos según el tipo de crecimiento
-  const hpIncrease = calculateStatIncrease(champion.maxHp, champion.hpGrowth, champion.level);
-  const attackIncrease = calculateStatIncrease(champion.attack, champion.attackGrowth, champion.level);
-  const defenseIncrease = calculateStatIncrease(champion.armor, champion.defenseGrowth, champion.level);
-  const speedIncrease = calculateStatIncrease(champion.speed, champion.speedGrowth, champion.level);
-  const apIncrease = calculateStatIncrease(champion.ap, champion.apGrowth, champion.level);
+  const increases: GrowthIncreases = {
+    maxHp: accumulateStatIncrease(champion, "maxHp", champion.maxHp, champion.hpGrowth),
+    attack: accumulateStatIncrease(champion, "attack", champion.attack, champion.attackGrowth),
+    armor: accumulateStatIncrease(champion, "armor", champion.armor, champion.defenseGrowth),
+    speed: accumulateStatIncrease(champion, "speed", champion.speed, champion.speedGrowth),
+    ap: accumulateStatIncrease(champion, "ap", champion.ap, champion.apGrowth),
+  };
+
+  const applied = appliedIncreasesByChampion.get(champion) ?? [];
+  applied.push(increases);
+  appliedIncreasesByChampion.set(champion, applied);
 
   // Aplicar incrementos
-  champion.maxHp += hpIncrease;
+  champion.maxHp += increases.maxHp;
   // Si está vivo, aumentar currentHp. Si está muerto, no tocar currentHp para evitar ressuscitar
   if (champion.currentHp > 0) {
-    champion.currentHp += hpIncrease;
+    champion.currentHp += increases.maxHp;
   }
-  champion.attack += attackIncrease;
-  champion.armor += defenseIncrease;
-  champion.magic_resist += defenseIncrease;  // defensGrowth augmenta tant armor com magic resist
-  champion.speed += speedIncrease;
-  champion.ap += apIncrease;
+  champion.attack += increases.attack;
+  champion.armor += increases.armor;
+  champion.magic_resist += increases.armor;  // defensGrowth augmenta tant armor com magic resist
+  champion.speed += increases.speed;
+  champion.ap += increases.ap;
 }
 
 export function levelDownChampion(champion: Champion): void {
@@ -69,12 +106,14 @@ export function levelDownChampion(champion: Champion): void {
     return;
   }
 
-  // Calcular els increments del nivell actual (abans de baixar) perquè coincideixin amb levelUp
-  const hpDecrease = calculateStatIncrease(champion.maxHp, champion.hpGrowth, champion.level);
-  const attackDecrease = calculateStatIncrease(champion.attack, champion.attackGrowth, champion.level);
-  const defenseDecrease = calculateStatIncrease(champion.armor, champion.defenseGrowth, champion.level);
-  const speedDecrease = calculateStatIncrease(champion.speed, champion.speedGrowth, champion.level);
-  const apDecrease = calculateStatIncrease(champion.ap, champion.apGrowth, champion.level);
+  // Reverteix exactament l'últim levelUp (o recalcula si no en tenim constància)
+  const applied = appliedIncreasesByChampion.get(champion);
+  const lastIncrease = applied?.pop();
+  const hpDecrease = lastIncrease?.maxHp ?? accumulateStatIncrease(champion, "maxHp", champion.maxHp, champion.hpGrowth);
+  const attackDecrease = lastIncrease?.attack ?? accumulateStatIncrease(champion, "attack", champion.attack, champion.attackGrowth);
+  const defenseDecrease = lastIncrease?.armor ?? accumulateStatIncrease(champion, "armor", champion.armor, champion.defenseGrowth);
+  const speedDecrease = lastIncrease?.speed ?? accumulateStatIncrease(champion, "speed", champion.speed, champion.speedGrowth);
+  const apDecrease = lastIncrease?.ap ?? accumulateStatIncrease(champion, "ap", champion.ap, champion.apGrowth);
 
   champion.level -= 1;
   champion.maxHp = Math.max(1, champion.maxHp - hpDecrease);

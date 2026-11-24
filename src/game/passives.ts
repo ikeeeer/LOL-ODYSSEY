@@ -186,27 +186,50 @@ export function getDamageMultiplier(champion: Champion): number {
   return 1 + (state.combatDamageBonus || 0);
 }
 
+// Resistances use a multiplicative mitigation curve instead of a flat subtraction,
+// so armor/MR keep mattering at every level: 0 resist = full damage, 50 resist = 1/3.
+const RESIST_MITIGATION_CONSTANT = 50;
+
+// Every level of difference between attacker and defender shifts damage by 1.5%,
+// clamped so extreme level gaps stay playable.
+const LEVEL_DAMAGE_BONUS_PER_LEVEL = 0.015;
+const MIN_LEVEL_DAMAGE_MULTIPLIER = 0.65;
+const MAX_LEVEL_DAMAGE_MULTIPLIER = 1.3;
+
+function getResistMultiplier(resist: number): number {
+  const effectiveResist = Math.max(0, resist);
+  return RESIST_MITIGATION_CONSTANT / (RESIST_MITIGATION_CONSTANT + effectiveResist);
+}
+
+export function getLevelDamageMultiplier(attacker: Champion, defender: Champion): number {
+  const levelDifference = attacker.level - defender.level;
+  const multiplier = 1 + levelDifference * LEVEL_DAMAGE_BONUS_PER_LEVEL;
+  return Math.min(MAX_LEVEL_DAMAGE_MULTIPLIER, Math.max(MIN_LEVEL_DAMAGE_MULTIPLIER, multiplier));
+}
+
 export function calculateCombatDamage(attacker: Champion, defender: Champion): number {
-  let damage = 0;
   const effectiveArmor = getEffectiveArmor(defender);
   const effectiveMagicResist = getEffectiveMagicResist(defender);
   const attackMultiplier = getDamageMultiplier(attacker);
+  const levelMultiplier = getLevelDamageMultiplier(attacker, defender);
 
+  const physicalDamage = getEffectiveAttack(attacker) * getResistMultiplier(effectiveArmor);
+  const magicalDamage = getEffectiveAp(attacker) * getResistMultiplier(effectiveMagicResist);
+
+  let damage = 0;
   switch (attacker.damageType) {
     case DamageType.Physical:
-      damage = (getEffectiveAttack(attacker) * attackMultiplier) - (effectiveArmor * 0.2);
+      damage = physicalDamage;
       break;
     case DamageType.Magical:
-      damage = (getEffectiveAp(attacker) * attackMultiplier) - (effectiveMagicResist * 0.2);
+      damage = magicalDamage;
       break;
     case DamageType.Mixed:
-      const magicalDamage = (getEffectiveAp(attacker) * attackMultiplier - effectiveMagicResist * 0.2) * 0.6;
-      const physicalDamage = (getEffectiveAttack(attacker) * attackMultiplier - effectiveArmor * 0.2) * 0.4;
-      damage = magicalDamage + physicalDamage;
+      damage = magicalDamage * 0.6 + physicalDamage * 0.4;
       break;
   }
 
-  return Math.floor(Math.max(1, damage));
+  return Math.floor(Math.max(1, damage * attackMultiplier * levelMultiplier));
 }
 
 export function applySonaBuff(team: Team, attacker: Champion): string[] {

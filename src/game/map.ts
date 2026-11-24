@@ -108,20 +108,22 @@ function buildPhaseMap(phase: number): MapGraph {
     // Triar la posició de l'únic Scrim (nivell 3: nodes 8-11)
     const scrimNodeId = [8, 9, 10, 11][Math.floor(Math.random() * 4)];
 
-    // Triar la posició del Bard a partir del nivell 3 (nodes 8-16, excloent Scrim)
-    const bardCandidateIds = [8, 9, 10, 11, 12, 13, 14, 15, 16].filter(
-        id => id !== scrimNodeId
-    );
-    const bardNodeId = bardCandidateIds[Math.floor(Math.random() * bardCandidateIds.length)];
-
     // Triar quin dels 2 últims nodes (15 o 16) serà de curació
     const healNodeId = Math.random() < 0.5 ? 15 : 16;
+
+    // Triar la posició del Bard a partir del nivell 3 (nodes 8-16, excloent Scrim i Heal).
+    // Excloure el node de curació és imprescindible: si el Bard hi caigués, el mapa es
+    // quedaria sense cap node de curació en aquesta fase.
+    const bardCandidateIds = [8, 9, 10, 11, 12, 13, 14, 15, 16].filter(
+        id => id !== scrimNodeId && id !== healNodeId
+    );
+    const bardNodeId = bardCandidateIds[Math.floor(Math.random() * bardCandidateIds.length)];
 
     // Construeix els tipus de node
     function getNodeType(nodeId: number, depth: number): NodeType {
         if (nodeId === scrimNodeId) return NodeType.Scrim;
-        if (nodeId === bardNodeId) return NodeType.Bard;
         if (nodeId === healNodeId) return NodeType.Heal;
+        if (nodeId === bardNodeId) return NodeType.Bard;
         // Nodes del nivell 1 usen firstNodeType etc.
         if (nodeId === 2) return firstNodeType;
         if (nodeId === 3) return secondNodeType;
@@ -187,10 +189,16 @@ export function getNodeById(map: MapGraph, nodeId: number): MapNode | undefined 
     return map.nodes.find(node => node.id === nodeId);
 }
 
+// Els campions reclutats mai baixen del nivell 3, ni tan sols als primers nodes.
+const MIN_RECRUIT_LEVEL = 3;
+
 export function getRecruitOptions(depth: number, region: Region = Region.Demacia, phase: number = 1): ChampionBase[] {
     const pool = region === Region.Demacia ? DEMACIA_CHAMPIONS : DEMACIA_CHAMPIONS;
     const options = getRandomChampions(pool, 3);
-    const targetLevel = phase === 5 ? Math.max(47, depth) : phase === 4 ? Math.max(35, depth) : phase === 3 ? Math.max(21, depth) : phase === 2 ? Math.max(10, depth) : depth;
+    const targetLevel = Math.max(
+        MIN_RECRUIT_LEVEL,
+        phase === 5 ? Math.max(47, depth) : phase === 4 ? Math.max(35, depth) : phase === 3 ? Math.max(21, depth) : phase === 2 ? Math.max(10, depth) : depth
+    );
 
     return options.map(champion => ({
         ...champion,
